@@ -3,7 +3,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from data_preparation import load_data, prepare_data
 from pretraining_model import train_model, validate_model, early_stopping
 from transformer import Transformer
-from utils import data_split, generate_mask
+from utils import data_split, generate_mask, apply_mask
 
 # Percorsi dei dati
 data_path = {
@@ -62,10 +62,6 @@ train_target_data = train_data
 val_target_data = val_data
 '''
 
-# Generazione maschere
-mask_bvp = generate_mask(segment_length, masking_ratio, lm)
-mask_eda = generate_mask(segment_length, masking_ratio, lm)
-mask_hr = generate_mask(segment_length, masking_ratio, lm)
 
 # Definizione del modello
 input_sizes = {'bvp': segment_length, 'eda': segment_length, 'hr': segment_length}
@@ -84,7 +80,9 @@ val_losses = []  # Lista per memorizzare le loss di validazione per il controllo
 
 # Ciclo di training
 for epoch in range(num_epochs):
-    train_loss = train_model(model, prepared_train_data, mask_bvp, mask_eda, mask_hr, optimizer)
+
+    masked_data = apply_mask(prepared_train_data)
+    train_loss = train_model(model, prepared_train_data, masked_data, optimizer)
     val_loss = validate_model(model, prepared_val_data, mask_bvp, mask_eda, mask_hr)
 
     # Aggiungi la loss di validazione alla lista

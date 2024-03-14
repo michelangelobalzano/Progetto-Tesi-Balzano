@@ -6,7 +6,7 @@ from utils import masked_prediction_loss
 
 
 # Metodo per l'addestramento del modello
-def train_model(model, prepared_train_data, mask_bvp, mask_eda, mask_hr, optimizer):
+def train_model(model, prepared_train_data, masked_data, optimizer):
     model.train()
     train_loss = 0.0
 
@@ -14,11 +14,7 @@ def train_model(model, prepared_train_data, mask_bvp, mask_eda, mask_hr, optimiz
         optimizer.zero_grad()  # Azzeramento dei gradienti
 
         # Passaggio dei segmenti mascherati al modello
-        output = model({
-            'bvp': segments['bvp'] * mask_bvp,
-            'eda': segments['eda'] * mask_eda,
-            'hr': segments['hr'] * mask_hr
-        })
+        output = model(masked_data)
 
         # Calcola la loss e aggiorna i pesi del modello
         loss = masked_prediction_loss(output, segments, [mask_bvp, mask_eda, mask_hr])
