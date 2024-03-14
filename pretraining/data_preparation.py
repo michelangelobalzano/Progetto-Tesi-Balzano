@@ -23,13 +23,19 @@ def prepare_data(data):
     return prepared_data
 
 # Generazione della maschera booleana
-def generate_mask(segment_length, masking_ratio, lm):
-    
-    lu = (1 - masking_ratio) / masking_ratio * lm
-    
+def generate_mask(segment_length, masking_ratio, lm, lu):
     masks = []
     for _ in range(segment_length):
-        mask = np.random.geometric(1 / lu, segment_length[_]) - 1
-        mask = np.where(mask >= lm, 1, 0)
+        # Genera casualmente una maschera binaria basata sulla proporzione di mascheramento
+        mask = np.random.choice([0, 1], size=segment_length, p=[masking_ratio, 1 - masking_ratio])
+        # Cerca la prima occorrenza di uno nella maschera
+        first_one_index = np.argmax(mask)
+        # Genera casualmente la lunghezza degli zeri seguendo una distribuzione geometrica con media lm
+        zero_length = np.random.geometric(1 / lm)
+        # Modifica la maschera in modo che ci siano zeri fino alla lunghezza calcolata o fino alla prima occorrenza di uno
+        mask[:first_one_index] = 0
+        mask[first_one_index:first_one_index + zero_length] = 0
+        # La parte rimanente della maschera sarà 1 (non mascherata)
+        mask[first_one_index + zero_length:] = 1
         masks.append(mask)
     return masks
