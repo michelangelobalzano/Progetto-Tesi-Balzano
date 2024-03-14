@@ -2,7 +2,7 @@ import pandas as pd
 
 dataset = ['data1']# , 'data2', 'data3', 'data4', 'data5', 'data6', 'data7', 'data8', 'data9', 'data10'
 file_names = ['bvp.csv', 'eda.csv', 'hr.csv']
-output_directory = 'data\\'
+output_directory = 'processed_data\\'
 
 bvp, eda, hr = pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
