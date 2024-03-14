@@ -167,3 +167,10 @@ preprocessing/pyvenv.cfg
 preprocessing/Scripts/
 preprocessing/Include
 preprocessing/Lib
+
+# Esclusione file e cartelle ambiente virtuale pretraining
+pretraining/pyvenv.cfg
+pretraining/Scripts/
+pretraining/Include
+pretraining/Lib
+pretraining/share
