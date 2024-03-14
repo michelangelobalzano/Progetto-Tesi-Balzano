@@ -17,7 +17,7 @@ sampling_frequency = 4 # Hz
 # Variabili per il mascheramento
 segment_length = 240 # Lunghezza dei segmenti in time steps
 masking_ratio = 0.15 # Rapporto di valori mascherati
-lm = 3 # Media della lunghezza dei segmenti mascherati in secondi
+lm = 12 # Media della lunghezza dei segmenti mascherati in secondi
 
 # Proporzione dati per la validazione sul totale 
 train_data_ratio = 0.85
