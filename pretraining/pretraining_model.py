@@ -3,29 +3,37 @@ import torch.nn as nn
 
 from utils import masked_prediction_loss
 
+
+
 # Metodo per l'addestramento del modello
-def train_model(model, train_input_data, mask_bvp, mask_eda, mask_hr, optimizer):
+def train_model(model, prepared_train_data, mask_bvp, mask_eda, mask_hr, optimizer):
     model.train()
     train_loss = 0.0
 
-    for segment_data in zip(train_input_data['bvp'], train_input_data['eda'], train_input_data['hr']):
+    for signal, segments in prepared_train_data.items():
         optimizer.zero_grad()  # Azzeramento dei gradienti
 
         # Passaggio dei segmenti mascherati al modello
         output = model({
-            'bvp': segment_data[0] * mask_bvp,
-            'eda': segment_data[1] * mask_eda,
-            'hr': segment_data[2] * mask_hr
+            'bvp': segments['bvp'] * mask_bvp,
+            'eda': segments['eda'] * mask_eda,
+            'hr': segments['hr'] * mask_hr
         })
 
         # Calcola la loss e aggiorna i pesi del modello
-        loss = masked_prediction_loss(output, segment_data, [mask_bvp, mask_eda, mask_hr])
+        loss = masked_prediction_loss(output, segments, [mask_bvp, mask_eda, mask_hr])
         loss.backward()
         optimizer.step()
 
         train_loss += loss.item()  # Accumula la loss
 
-    return train_loss / len(train_input_data['bvp'])
+    return train_loss / len(prepared_train_data['bvp'])
+
+
+
+
+
+
 
 # Metodo per la validazione del modello
 def validate_model(model, val_input_data, mask_bvp, mask_eda, mask_hr):

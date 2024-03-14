@@ -87,12 +87,12 @@ class TransformationHead(nn.Module):
 ###############################################################
 
 class Transformer(nn.Module):
-    def __init__(self, input_sizes, channel_embedding_output_size, representation_hidden_size, representation_num_heads, transformation_output_size):
+    def __init__(self, input_sizes, sampling_frequency, channel_embedding_output_size, representation_hidden_size, representation_num_heads, transformation_output_size):
         super(Transformer, self).__init__()
         self.channel_embeddings = nn.ModuleDict({
-            'bvp': ChannelEmbedding(input_sizes['bvp'], channel_embedding_output_size),
-            'eda': ChannelEmbedding(input_sizes['eda'], channel_embedding_output_size),
-            'hr': ChannelEmbedding(input_sizes['hr'], channel_embedding_output_size),
+            'bvp': ChannelEmbedding(input_sizes['bvp'], channel_embedding_output_size, sampling_frequency),
+            'eda': ChannelEmbedding(input_sizes['eda'], channel_embedding_output_size, sampling_frequency),
+            'hr': ChannelEmbedding(input_sizes['hr'], channel_embedding_output_size, sampling_frequency),
         })
         self.representation_module = RepresentationModule(len(input_sizes) * channel_embedding_output_size, representation_num_heads, representation_hidden_size)
         self.transformation_head = TransformationHead(representation_hidden_size, transformation_output_size)
