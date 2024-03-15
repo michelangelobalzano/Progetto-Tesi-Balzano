@@ -98,8 +98,10 @@ class Transformer(nn.Module):
         self.transformation_head = TransformationHead(representation_hidden_size, transformation_output_size)
 
     def forward(self, x):
-        embedded_data = [self.channel_embeddings[channel](x[channel]) for channel in x]
-        concatenated_data = torch.cat(embedded_data, dim=2)  # Concatenazione lungo la dimensione F
+        embedded_data = []
+        for signal, segment in x.items():
+            embedded_data.append(self.channel_embeddings[signal](segment.unsqueeze(0)))
+        concatenated_data = torch.cat(embedded_data, dim=2)
         representation_output = self.representation_module(concatenated_data)
         transformation_output = self.transformation_head(representation_output)
         return transformation_output

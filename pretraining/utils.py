@@ -1,18 +1,9 @@
-import torch
-import torch.nn as nn
 from sklearn.model_selection import train_test_split
 import numpy as np
 import random
+import torch
 
-# Criterio di minimizzazione dell'errore
-criterion = nn.MSELoss()
 
-# Calcolo dell'RMSE
-def masked_prediction_loss(outputs, targets, masks):
-    loss = 0
-    for output, target, mask in zip(outputs, targets, masks):
-        loss += torch.sqrt(criterion(output * mask, target * mask))
-    return loss / len(outputs)
 
 # Suddivisione dei segmenti in train e val
 def data_split(data, split_ratio, signals):
@@ -57,22 +48,31 @@ def generate_random_start_idx(num_numbers, range_start, range_end, distance):
 
 # Metodo che riceve i dati e li restituisce mascherati
 def apply_mask_to_tensor(tensor, masking_ratio, lm):
+
     segment_length = tensor.size(0)
     mask = generate_mask(segment_length, masking_ratio, lm)
-    masked_tensor = tensor * mask.unsqueeze(1)
-    return masked_tensor
+    mask_tensor = torch.tensor(mask)
+    masked_tensor = tensor * mask_tensor.unsqueeze(1)
+    
+    return masked_tensor, mask_tensor
 
 # Funzione per applicare la maschera a ciascun tensore in un dizionario di tensori
 def apply_mask(data, masking_ratio, lm):
     masked_data = {}
+    masks = {}
     
-    for signal_name, tensor_list in data.items():
+    for signal, tensor_list in data.items():
 
         masked_tensors = []
+        signal_masks = []
+
         for tensor in tensor_list:
 
-            masked_tensor = apply_mask_to_tensor(tensor, masking_ratio, lm)
+            masked_tensor, mask = apply_mask_to_tensor(tensor, masking_ratio, lm)
             masked_tensors.append(masked_tensor)
-        masked_data[signal_name] = masked_tensors
+            signal_masks.append(mask)
+
+        masked_data[signal] = masked_tensors
+        masks[signal] = signal_masks
     
-    return masked_data
+    return masked_data, masks

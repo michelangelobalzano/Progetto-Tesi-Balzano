@@ -1,7 +1,7 @@
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from data_preparation import load_data, prepare_data
-from pretraining_model import train_model, validate_model, early_stopping
+from training_methods import train_model, validate_model, early_stopping
 from transformer import Transformer
 from utils import data_split, generate_mask, apply_mask
 
@@ -34,36 +34,21 @@ train_data_ratio = 0.85
 # MAIN
 
 # Caricamento e preparazione dei dati
+print('caricamento dati...')
 data = load_data(data_path, signals)
 
 # Suddivisione dei dati in train e val
+print('split dati test/val...')
 train_data, val_data = data_split(data, train_data_ratio, signals)
 
 # Prepara i dati suddivisi
+print('preparazione train data...')
 prepared_train_data = prepare_data(train_data)
+print('preparazione val data...')
 prepared_val_data = prepare_data(val_data)
 
-'''# Definizione dei dati di input per il training
-train_input_data = {
-    'bvp': train_data['bvp'],
-    'eda': train_data['eda'],
-    'hr': train_data['hr']
-}
-
-# Definizione dei dati di input per la validazione
-val_input_data = {
-    'bvp': val_data['bvp'],
-    'eda': val_data['eda'],
-    'hr': val_data['hr']
-}
-
-# Definizione dei target per il training e la validazione
-train_target_data = train_data
-val_target_data = val_data
-'''
-
-
 # Definizione del modello
+print('definizione del modello...')
 input_sizes = {'bvp': segment_length, 'eda': segment_length, 'hr': segment_length}
 channel_embedding_output_size = 16
 representation_hidden_size = 256
@@ -71,19 +56,42 @@ representation_num_heads = 2
 transformation_output_size = 10
 model = Transformer(input_sizes, sampling_frequency, channel_embedding_output_size, representation_hidden_size, representation_num_heads, transformation_output_size)
 
-# Definizione dell'ottimizzatore (AdamW) e dello scheduler della velocità di apprendimento
+# Definizione dell'ottimizzatore (AdamW)
 optimizer = optim.AdamW(model.parameters(), lr=0.001)
-scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.3, patience=10, threshold=1e-4, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-8, verbose=True)
+
+# Definizione dello scheduler di apprendimento
+scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.3, patience=10, threshold=1e-4, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-8)
+
+
+
+
+
+
+
+
+
+##################################################################################################################
+# Ciclo di training
 
 num_epochs = 300
 val_losses = []  # Lista per memorizzare le loss di validazione per il controllo dell'arresto anticipato
-
-# Ciclo di training
 for epoch in range(num_epochs):
+    
+    print(f'###########################\nEPOCA: {epoch}...')
 
-    masked_data = apply_mask(prepared_train_data)
-    train_loss = train_model(model, prepared_train_data, masked_data, optimizer)
-    val_loss = validate_model(model, prepared_val_data, mask_bvp, mask_eda, mask_hr)
+    # Mascheramento
+    print('mascheramento train data...')
+    masked_train_data, train_masks = apply_mask(prepared_train_data, masking_ratio, lm)
+    # Training
+    print('training...')
+    train_loss = train_model(model, prepared_train_data, masked_train_data, train_masks, optimizer)
+
+    # Mascheramento
+    print('mascheramento val data...')
+    masked_val_data, val_masks = apply_mask(prepared_val_data, masking_ratio, lm)
+    # Validation
+    print('validation...')
+    val_loss = validate_model(model, prepared_val_data, masked_val_data, val_masks)
 
     # Aggiungi la loss di validazione alla lista
     val_losses.append(val_loss)
@@ -98,3 +106,5 @@ for epoch in range(num_epochs):
 
     # Aggiorna lo scheduler della velocità di apprendimento in base alla loss di validazione
     scheduler.step(val_loss)
+
+##################################################################################################################
