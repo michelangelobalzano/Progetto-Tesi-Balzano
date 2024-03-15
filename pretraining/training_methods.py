@@ -6,11 +6,15 @@ import torch.nn as nn
 criterion = nn.MSELoss()
 
 # Calcolo dell'RMSE
-def masked_prediction_loss(output, target, mask):
+def masked_prediction_loss(outputs, target, masks):
 
-    masked_output = output * mask
-    masked_target = target * mask
-    loss = torch.sqrt(criterion(masked_output, masked_target))
+    loss = 0
+
+    for signal, output in outputs.items():
+
+        masked_output = output * masks[signal]
+        masked_target = target[signal] * masks[signal]
+        loss += torch.sqrt(criterion(masked_output, masked_target))
 
     return loss
 
@@ -24,26 +28,27 @@ def train_model(model, train_data, masked_train_data, train_masks, optimizer):
     # Calcolo del numero dei segmenti
     num_segments = len(train_data[next(iter(train_data))])
 
-    print(f'numero segmenti: {num_segments}')
-
     for i in range(num_segments):
 
         # Recupero dell'i-esima tripla di segmenti (uno per segnale)
         segment_data = {}
         segment_masked_data = {}
+        segment_masks = {}
         for signal, segments in train_data.items():
             segment_data[signal] = segments[i]
         for signal, segments in masked_train_data.items():
             segment_masked_data[signal] = segments[i]
+        for signal, segments in train_masks.items():
+            segment_masks[signal] = segments[i]
 
         # Azzeramento dei gradienti
         optimizer.zero_grad()
 
         # Passaggio della tripla dei segmenti mascherati al modello
-        output = model(segment_masked_data)
+        outputs = model(segment_masked_data)
 
         # Calcolo della loss e aggiornamento dei pesi
-        loss = masked_prediction_loss(output, segment_data, train_masks)
+        loss = masked_prediction_loss(outputs, segment_data, segment_masks)
         loss.backward()
         optimizer.step()
 
@@ -65,8 +70,6 @@ def validate_model(model, val_data, masked_val_data, val_masks):
     val_loss = 0.0
     num_segments = len(val_data[next(iter(val_data))])
 
-    print(f'numero segmenti: {num_segments}')
-
     with torch.no_grad():
 
         for i in range(num_segments):
@@ -74,16 +77,19 @@ def validate_model(model, val_data, masked_val_data, val_masks):
             # Recupero dell'i-esima tripla di segmenti (uno per segnale)
             segment_data = {}
             segment_masked_data = {}
+            segment_masks = {}
             for signal, segments in val_data.items():
                 segment_data[signal] = segments[i]
             for signal, segments in masked_val_data.items():
                 segment_masked_data[signal] = segments[i]
+            for signal, segments in val_masks.items():
+                segment_masks[signal] = segments[i]
 
             # Passaggio della tripla di segmenti mascherati al modello
-            output = model(segment_masked_data)
+            outputs = model(segment_masked_data)
 
             # Calcolo della loss
-            loss = masked_prediction_loss(output, segment_data, val_masks)
+            loss = masked_prediction_loss(outputs, segment_data, segment_masks)
             
             # Accumulo della loss
             val_loss += loss.item()

@@ -50,9 +50,9 @@ prepared_val_data = prepare_data(val_data)
 # Definizione del modello
 print('definizione del modello...')
 channel_embedding_output_size = 16
-representation_hidden_size = 256
+representation_hidden_size = 240
 representation_num_heads = 2
-transformation_output_size = 10
+transformation_output_size = 240
 model = Transformer(segment_length, sampling_frequency, channel_embedding_output_size, representation_hidden_size, representation_num_heads, transformation_output_size)
 
 # Definizione dell'ottimizzatore (AdamW)

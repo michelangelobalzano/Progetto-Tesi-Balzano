@@ -21,14 +21,11 @@ class ChannelEmbedding(nn.Module):
         x = self.activation(x)
         x = self.batch_norm(x)
         x = self.max_pooling(x)
-        '''
         batch_size = x.size(0)
         time_steps = x.size(2)
         filters = x.size(1)
         x = x.view(batch_size, time_steps, filters)
-        '''
 
-        print('CE dim: ', x.size())
         return x
 
 # REPRESENTATIO MODULE
@@ -66,15 +63,26 @@ class TransformationHead(nn.Module):
             nn.GELU(),
             nn.Linear(input_size, output_size)
         )
-        self.avg_pooling = nn.AvgPool1d(kernel_size=2)
+        self.avg_pooling = nn.AvgPool1d(kernel_size=1)
         self.final_projection = nn.Linear(in_features=output_size, out_features=input_size)
 
     def forward(self, x):
         x = self.mlp(x)
         x = self.avg_pooling(x)
-        x = self.final_projection(x)
-        print('dimensione output: ', x.size())
-        return x
+        output1 = self.final_projection(x)
+        output2 = self.final_projection(x)
+        output3 = self.final_projection(x)
+
+        output1 = torch.mean(output1, dim=1)
+        output2 = torch.mean(output2, dim=1)
+        output3 = torch.mean(output3, dim=1)
+
+        # Trasponi i tensori risultanti
+        output1 = output1.transpose(0, 1)
+        output2 = output2.transpose(0, 1)
+        output3 = output3.transpose(0, 1)
+
+        return output1, output2, output3
 
 
 
@@ -103,31 +111,31 @@ class Transformer(nn.Module):
         })
 
         # Inizializzazione representation module
-        self.representation_module = RepresentationModule(segment_lenght * channel_embedding_output_size, representation_num_heads, representation_hidden_size)
+        self.representation_module = RepresentationModule(channel_embedding_output_size * 3, representation_num_heads, representation_hidden_size)
         
         # Inizializzazione transformation head
         self.transformation_head = TransformationHead(representation_hidden_size, transformation_output_size)
 
     def forward(self, x):
 
-        print('channel embedding...')
         embedded_data = []
         for signal, tensor in x.items():
+
             tensor = tensor.squeeze(1)
             tensor = tensor.unsqueeze(0).unsqueeze(1)
             embedded_data.append(self.channel_embeddings[signal](tensor))
         
         # Concatenazione dell'output dei channel embeddings lungo la dimensione F
-        concatenated_data = torch.cat(embedded_data, dim=1)
+        concatenated_data = torch.cat(embedded_data, dim=2)
 
-        print('dim concatenated: ', concatenated_data.size())
-
-        print('representation module...')
         representation_output = self.representation_module(concatenated_data)
         
-        print('transformation head...')
-        transformation_output = self.transformation_head(representation_output)
+        output1, output2, output3 = self.transformation_head(representation_output)
 
-        print (transformation_output.size())
+        output = {
+            'bvp': output1,
+            'eda': output2,
+            'hr': output3
+        }
 
-        return transformation_output
+        return output
