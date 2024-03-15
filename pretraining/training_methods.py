@@ -30,6 +30,8 @@ def train_model(model, train_data, masked_train_data, train_masks, optimizer):
 
     for i in range(num_segments):
 
+        print('Segmento ', i)
+
         # Recupero dell'i-esima tripla di segmenti (uno per segnale)
         segment_data = {}
         segment_masked_data = {}

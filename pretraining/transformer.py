@@ -17,10 +17,17 @@ class ChannelEmbedding(nn.Module):
         self.max_pooling = nn.MaxPool1d(kernel_size=sampling_frequency, stride=sampling_frequency)
 
     def forward(self, x):
+
+        # Convoluzione 1D
         x = self.conv1d(x)
+        # Funzione di attivazione
         x = self.activation(x)
+        # Normalizzazione
         x = self.batch_norm(x)
+        # Max Pooling
         x = self.max_pooling(x)
+
+        # Riorganizzazione in tripla (B, N, F)
         batch_size = x.size(0)
         time_steps = x.size(2)
         filters = x.size(1)
@@ -28,7 +35,7 @@ class ChannelEmbedding(nn.Module):
 
         return x
 
-# REPRESENTATIO MODULE
+# REPRESENTATION MODULE
 
 class RepresentationModule(nn.Module):
     def __init__(self, input_size, num_heads, hidden_size, dropout=0.1):
@@ -63,7 +70,7 @@ class TransformationHead(nn.Module):
             nn.GELU(),
             nn.Linear(input_size, output_size)
         )
-        self.avg_pooling = nn.AvgPool1d(kernel_size=1)
+        self.avg_pooling = nn.AvgPool1d(kernel_size=4)
         self.final_projection = nn.Linear(in_features=output_size, out_features=input_size)
 
     def forward(self, x):
@@ -77,7 +84,6 @@ class TransformationHead(nn.Module):
         output2 = torch.mean(output2, dim=1)
         output3 = torch.mean(output3, dim=1)
 
-        # Trasponi i tensori risultanti
         output1 = output1.transpose(0, 1)
         output2 = output2.transpose(0, 1)
         output3 = output3.transpose(0, 1)
@@ -100,18 +106,18 @@ class TransformationHead(nn.Module):
 ###############################################################
 
 class Transformer(nn.Module):
-    def __init__(self, segment_lenght, sampling_frequency, channel_embedding_output_size, representation_hidden_size, representation_num_heads, transformation_output_size):
+    def __init__(self, sampling_frequency, ce_output_size, representation_hidden_size, num_heads, transformation_output_size):
         super(Transformer, self).__init__()
 
         # Creazione di un channel embedding per ogni segnale
         self.channel_embeddings = nn.ModuleDict({
-            'bvp': ChannelEmbedding(channel_embedding_output_size, sampling_frequency),
-            'eda': ChannelEmbedding(channel_embedding_output_size, sampling_frequency),
-            'hr': ChannelEmbedding(channel_embedding_output_size, sampling_frequency)
+            'bvp': ChannelEmbedding(ce_output_size, sampling_frequency),
+            'eda': ChannelEmbedding(ce_output_size, sampling_frequency),
+            'hr': ChannelEmbedding(ce_output_size, sampling_frequency)
         })
 
         # Inizializzazione representation module
-        self.representation_module = RepresentationModule(channel_embedding_output_size * 3, representation_num_heads, representation_hidden_size)
+        self.representation_module = RepresentationModule(ce_output_size * 3, num_heads, representation_hidden_size)
         
         # Inizializzazione transformation head
         self.transformation_head = TransformationHead(representation_hidden_size, transformation_output_size)
