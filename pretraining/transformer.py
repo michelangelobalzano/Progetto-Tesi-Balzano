@@ -9,7 +9,7 @@ import torch.nn.functional as F
 # CHANNEL EMBEDDINGS
 
 class ChannelEmbedding(nn.Module):
-    def __init__(self, input_size, output_size, sampling_frequency):
+    def __init__(self, output_size, sampling_frequency):
         super(ChannelEmbedding, self).__init__()
         self.conv1d = nn.Conv1d(in_channels=1, out_channels=output_size, kernel_size=sampling_frequency)
         self.activation = nn.GELU()
@@ -21,10 +21,14 @@ class ChannelEmbedding(nn.Module):
         x = self.activation(x)
         x = self.batch_norm(x)
         x = self.max_pooling(x)
+        '''
         batch_size = x.size(0)
         time_steps = x.size(2)
         filters = x.size(1)
         x = x.view(batch_size, time_steps, filters)
+        '''
+
+        print('CE dim: ', x.size())
         return x
 
 # REPRESENTATIO MODULE
@@ -63,10 +67,13 @@ class TransformationHead(nn.Module):
             nn.Linear(input_size, output_size)
         )
         self.avg_pooling = nn.AvgPool1d(kernel_size=2)
+        self.final_projection = nn.Linear(in_features=output_size, out_features=input_size)
 
     def forward(self, x):
         x = self.mlp(x)
         x = self.avg_pooling(x)
+        x = self.final_projection(x)
+        print('dimensione output: ', x.size())
         return x
 
 
@@ -85,18 +92,18 @@ class TransformationHead(nn.Module):
 ###############################################################
 
 class Transformer(nn.Module):
-    def __init__(self, input_sizes, sampling_frequency, channel_embedding_output_size, representation_hidden_size, representation_num_heads, transformation_output_size):
+    def __init__(self, segment_lenght, sampling_frequency, channel_embedding_output_size, representation_hidden_size, representation_num_heads, transformation_output_size):
         super(Transformer, self).__init__()
 
         # Creazione di un channel embedding per ogni segnale
         self.channel_embeddings = nn.ModuleDict({
-            'bvp': ChannelEmbedding(input_sizes['bvp'], channel_embedding_output_size, sampling_frequency),
-            'eda': ChannelEmbedding(input_sizes['eda'], channel_embedding_output_size, sampling_frequency),
-            'hr': ChannelEmbedding(input_sizes['hr'], channel_embedding_output_size, sampling_frequency),
+            'bvp': ChannelEmbedding(channel_embedding_output_size, sampling_frequency),
+            'eda': ChannelEmbedding(channel_embedding_output_size, sampling_frequency),
+            'hr': ChannelEmbedding(channel_embedding_output_size, sampling_frequency)
         })
 
         # Inizializzazione representation module
-        self.representation_module = RepresentationModule(len(input_sizes) * channel_embedding_output_size, representation_num_heads, representation_hidden_size)
+        self.representation_module = RepresentationModule(segment_lenght * channel_embedding_output_size, representation_num_heads, representation_hidden_size)
         
         # Inizializzazione transformation head
         self.transformation_head = TransformationHead(representation_hidden_size, transformation_output_size)
@@ -111,11 +118,16 @@ class Transformer(nn.Module):
             embedded_data.append(self.channel_embeddings[signal](tensor))
         
         # Concatenazione dell'output dei channel embeddings lungo la dimensione F
-        concatenated_data = torch.cat(embedded_data, dim=2)
+        concatenated_data = torch.cat(embedded_data, dim=1)
+
+        print('dim concatenated: ', concatenated_data.size())
 
         print('representation module...')
         representation_output = self.representation_module(concatenated_data)
         
         print('transformation head...')
         transformation_output = self.transformation_head(representation_output)
+
+        print (transformation_output.size())
+
         return transformation_output

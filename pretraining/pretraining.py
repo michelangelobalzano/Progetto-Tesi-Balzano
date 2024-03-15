@@ -49,12 +49,11 @@ prepared_val_data = prepare_data(val_data)
 
 # Definizione del modello
 print('definizione del modello...')
-input_sizes = {'bvp': segment_length, 'eda': segment_length, 'hr': segment_length}
 channel_embedding_output_size = 16
 representation_hidden_size = 256
 representation_num_heads = 2
 transformation_output_size = 10
-model = Transformer(input_sizes, sampling_frequency, channel_embedding_output_size, representation_hidden_size, representation_num_heads, transformation_output_size)
+model = Transformer(segment_length, sampling_frequency, channel_embedding_output_size, representation_hidden_size, representation_num_heads, transformation_output_size)
 
 # Definizione dell'ottimizzatore (AdamW)
 optimizer = optim.AdamW(model.parameters(), lr=0.001)
