@@ -7,7 +7,6 @@ import torch.nn.functional as F
 ###############################################################
 
 # CHANNEL EMBEDDINGS
-
 class ChannelEmbedding(nn.Module):
     def __init__(self, output_size, sampling_frequency):
         super(ChannelEmbedding, self).__init__()
@@ -17,6 +16,8 @@ class ChannelEmbedding(nn.Module):
         self.max_pooling = nn.MaxPool1d(kernel_size=sampling_frequency, stride=sampling_frequency)
 
     def forward(self, x):
+
+        print('channel embedding...')
 
         # Convoluzione 1D
         x = self.conv1d(x)
@@ -51,6 +52,9 @@ class RepresentationModule(nn.Module):
         self.add_norm_2 = nn.LayerNorm(hidden_size)
 
     def forward(self, x):
+
+        print('representation module...')
+
         x = self.linear_projection(x)
         residual = x
         x, _ = self.self_attention(x, x, x)
@@ -74,8 +78,12 @@ class TransformationHead(nn.Module):
         self.final_projection = nn.Linear(in_features=output_size, out_features=input_size)
 
     def forward(self, x):
+
+        print('transformation head')
+
         x = self.mlp(x)
         x = self.avg_pooling(x)
+        print(x.size())
         output1 = self.final_projection(x)
         output2 = self.final_projection(x)
         output3 = self.final_projection(x)
@@ -90,22 +98,10 @@ class TransformationHead(nn.Module):
 
         return output1, output2, output3
 
-
-
-
-
-
-
-
-
-
-
-
-###############################################################
 # ASSEMBLAGGIO DEL TRANSFORMER
-###############################################################
 
 class Transformer(nn.Module):
+
     def __init__(self, sampling_frequency, ce_output_size, representation_hidden_size, num_heads, transformation_output_size):
         super(Transformer, self).__init__()
 
@@ -145,3 +141,5 @@ class Transformer(nn.Module):
         }
 
         return output
+ 
+

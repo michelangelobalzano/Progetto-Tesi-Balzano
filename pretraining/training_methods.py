@@ -1,27 +1,28 @@
 import torch
 import torch.nn as nn
+import matplotlib.pyplot as plt
+import numpy as np
+from utils import apply_mask
 
 
 # Criterio di minimizzazione dell'errore
 criterion = nn.MSELoss()
 
-# Calcolo dell'RMSE
-def masked_prediction_loss(outputs, target, masks):
+# Calcolo della loss
+def masked_prediction_loss(outputs, target, mask):
 
     loss = 0
 
     for signal, output in outputs.items():
 
-        masked_output = output * masks[signal]
-        masked_target = target[signal] * masks[signal]
+        masked_output = output * mask
+        masked_target = target[signal] * mask
         loss += torch.sqrt(criterion(masked_output, masked_target))
 
     return loss
 
-
-# Metodo per l'addestramento del modello
-def train_model(model, train_data, masked_train_data, train_masks, optimizer):
-
+# Train di un epoca
+def train_model(model, train_data, optimizer):
     model.train()
     train_loss = 0.0
 
@@ -34,23 +35,21 @@ def train_model(model, train_data, masked_train_data, train_masks, optimizer):
 
         # Recupero dell'i-esima tripla di segmenti (uno per segnale)
         segment_data = {}
-        segment_masked_data = {}
-        segment_masks = {}
         for signal, segments in train_data.items():
             segment_data[signal] = segments[i]
-        for signal, segments in masked_train_data.items():
-            segment_masked_data[signal] = segments[i]
-        for signal, segments in train_masks.items():
-            segment_masks[signal] = segments[i]
+
+        segment_masked_data, mask = apply_mask(segment_data)
+
+        stampa_grafico(segment_data, segment_masked_data)
 
         # Azzeramento dei gradienti
         optimizer.zero_grad()
 
         # Passaggio della tripla dei segmenti mascherati al modello
-        outputs = model(segment_masked_data)
+        output_segments = model(segment_masked_data)
 
         # Calcolo della loss e aggiornamento dei pesi
-        loss = masked_prediction_loss(outputs, segment_data, segment_masks)
+        loss = masked_prediction_loss(output_segments, segment_data, mask)
         loss.backward()
         optimizer.step()
 
@@ -59,13 +58,7 @@ def train_model(model, train_data, masked_train_data, train_masks, optimizer):
 
     return train_loss / num_segments
 
-
-
-
-
-
-
-# Metodo per la validazione del modello
+# Validation di un epoca
 def validate_model(model, val_data, masked_val_data, val_masks):
 
     model.eval()
@@ -99,12 +92,6 @@ def validate_model(model, val_data, masked_val_data, val_masks):
     # Calcola la loss media per la validazione
     return val_loss / num_segments
 
-
-
-
-
-
-
 # Metodo per il criterio di stop anticipato
 def early_stopping(val_losses, patience=10):
     if len(val_losses) < patience + 1:
@@ -115,3 +102,37 @@ def early_stopping(val_losses, patience=10):
             return False
 
     return True
+
+# Metodo provvisorio per la stampa dei dati di un singolo segmento
+def stampa_grafico(segment_data, segment_masked_data):
+
+    time = np.arange(240) / 4
+
+    plt.figure(figsize=(10, 6))
+
+    plt.subplot(3, 1, 1)
+    plt.plot(time, segment_data['bvp'], color='blue')
+    plt.plot(time, segment_masked_data['bvp'], color='green')
+    #plt.plot(time, outputs['bvp'], color='red')
+    plt.title('Blood Volume Pulse (BVP)')
+    plt.xlabel('Tempo (s)')
+    plt.ylabel('BVP')
+
+    plt.subplot(3, 1, 2)
+    plt.plot(time, segment_data['eda'], color='blue')
+    plt.plot(time, segment_masked_data['eda'], color='green')
+    #plt.plot(time, outputs['eda'], color='red')
+    plt.title('Electrodermal Activity (EDA)')
+    plt.xlabel('Tempo (s)')
+    plt.ylabel('EDA')
+
+    plt.subplot(3, 1, 3)
+    plt.plot(time, segment_data['hr'], color='blue')
+    plt.plot(time, segment_masked_data['hr'], color='green')
+    #plt.plot(time, outputs['hr'], color='red')
+    plt.title('Heart Rate (HR)')
+    plt.xlabel('Tempo (s)')
+    plt.ylabel('HR')
+
+    plt.tight_layout()
+    plt.show()
