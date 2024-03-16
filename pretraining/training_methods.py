@@ -13,7 +13,7 @@ def masked_prediction_loss(outputs, target, mask):
 
     loss = 0
 
-    for signal, output in outputs.items():
+    for signal, output in outputs.item():
 
         masked_output = output * mask
         masked_target = target[signal] * mask
@@ -40,7 +40,7 @@ def train_model(model, train_data, optimizer):
 
         segment_masked_data, mask = apply_mask(segment_data)
 
-        stampa_grafico(segment_data, segment_masked_data)
+        #stampa_grafico(segment_data, segment_masked_data)
 
         # Azzeramento dei gradienti
         optimizer.zero_grad()
