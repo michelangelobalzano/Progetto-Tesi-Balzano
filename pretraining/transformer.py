@@ -2,12 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-# CHANNEL EMBEDDINGS
-
+# Channel embedding
 class ChannelEmbedding(nn.Module):
-    def __init__(self, input_dim, hidden_dim, output_dim, kernel_size=4, stride=1, padding=1):
+    def __init__(self, hidden_dim, kernel_size=4, stride=1, padding=1):
         super(ChannelEmbedding, self).__init__()
-        self.conv1d = nn.Conv1d(1, hidden_dim, kernel_size=kernel_size, stride=stride, padding=padding)
+        self.conv1d = nn.Conv1d(in_channels=1, hidden_dim, kernel_size=kernel_size, stride=stride, padding=padding)
         self.activation = nn.GELU()
         self.batch_norm = nn.BatchNorm1d(hidden_dim)
         self.max_pooling = nn.MaxPool1d(kernel_size=4, stride=4)
@@ -19,17 +18,13 @@ class ChannelEmbedding(nn.Module):
         x = self.batch_norm(x)
         x = self.max_pooling(x)
         
-        batch_size = x.size(0)
-        time_steps = x.size(2)
-        filters = x.size(1)
-        x = x.view(batch_size, time_steps, filters)
+        x = x.permute(0, 2, 1)
         
         return x
 
 
 
-# REPRESENTATION MODULE
-    
+# Representation module
 class RepresentationModule(nn.Module):
     def __init__(self, input_dim, hidden_dim, num_heads):
         super(RepresentationModule, self).__init__()
@@ -61,8 +56,8 @@ class RepresentationModule(nn.Module):
 		
 
 
-# TRANSFORMATION HEAD
-    
+
+# Transformation head
 class TransformationHead(nn.Module):
     def __init__(self, input_dim, output_dim):
         super(TransformationHead, self).__init__()
@@ -80,26 +75,27 @@ class TransformationHead(nn.Module):
         x = x.unsqueeze(1)
         return x
 
-# ASSEMBLAGGIO DEL TRANSFORMER
 
+
+
+
+# Transformer
 class Transformer(nn.Module):
 
     def __init__(self, input_dim, hidden_dim, output_dim, num_heads):
         super(Transformer, self).__init__()
         self.channel_embeddings = nn.ModuleDict({
-            'bvp': ChannelEmbedding(input_dim, hidden_dim, hidden_dim),
-            'eda': ChannelEmbedding(input_dim, hidden_dim, hidden_dim),
-            'hr': ChannelEmbedding(input_dim, hidden_dim, hidden_dim)
+            'bvp': ChannelEmbedding(hidden_dim),
+            'eda': ChannelEmbedding(hidden_dim),
+            'hr': ChannelEmbedding(hidden_dim)
         })
         self.representation_module = RepresentationModule(input_dim, hidden_dim, num_heads)
         self.transformation_head = TransformationHead(hidden_dim, input_dim)
 
     def forward(self, input_dict):
-        
+
         outputs = {}
         for signal, segment in input_dict.items():
-            #segment = segment.squeeze(1)
-            #segment = segment.unsqueeze(0).unsqueeze(1)
 
             segment = segment.permute(0, 2, 1)
 
@@ -112,5 +108,3 @@ class Transformer(nn.Module):
             outputs[signal] = pred_output
 
         return outputs
-
-

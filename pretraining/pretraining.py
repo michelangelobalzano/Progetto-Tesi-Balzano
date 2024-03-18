@@ -65,7 +65,7 @@ num_epochs = 10
 val_losses = []
 for epoch in range(num_epochs):
     
-    print(f'EPOCA: {epoch}...')
+    print(f'EPOCA: {epoch}')
 
     # Training
     train_loss, model = train_model(model, train_dataloader, batch_size, optimizer, device)
