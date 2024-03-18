@@ -1,9 +1,12 @@
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from data_preparation import load_data, prepare_data
-from training_methods import train_model, validate_model, early_stopping
+from torch.utils.data import DataLoader
 from transformer import Transformer
 from utils import data_split
+import torch
+from data_preparation import load_data, prepare_data
+from training_methods import train_model, validate_model, early_stopping
+from utils import CustomDataset
 
 data_path = {'bvp': 'processed_data/bvp.csv', 'eda': 'processed_data/eda.csv', 'hr': 'processed_data/hr.csv'} # Percorsi dei dati
 signals = ['bvp', 'eda', 'hr'] # Segnali considerati
@@ -12,35 +15,44 @@ segment_length = 240 # Lunghezza dei segmenti in time steps
 masking_ratio = 0.15 # Rapporto di valori mascherati
 lm = 12 # Media della lunghezza delle sequenze mascherate
 train_data_ratio = 0.85 # Proporzione dati per la validazione sul totale
+batch_size = 32 # Dimensione di un batch di dati (in numero di segmenti)
 
 # Model data
-'''
-ce_output_size = 16 # Dimensione output dei channel embeddings
-hidden_size = 240
-num_heads = 2 # Numero teste auto attenzione multi testa
-t_output_size = 240 #
-'''
 hidden_dim = 60
 output_dim = 16
 num_heads = 2
 
 # MAIN
+# Check disponibilità GPU
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+if torch.cuda.is_available():
+    device_count = torch.cuda.device_count()
+    print(f"GPU disponibili: {device_count}")
+    
+    current_device_name = torch.cuda.get_device_name(torch.cuda.current_device())
+    print(f"GPU in uso: {current_device_name}")
+else:
+    print("GPU non disponibile. Si sta utilizzando la CPU.")
 
 # Caricamento e preparazione dei dati
 data = load_data(data_path, signals)
 
 # Suddivisione dei dati in train e val
-train_data, val_data = data_split(data, train_data_ratio, signals)
+train, val = data_split(data, train_data_ratio, signals)
 
 # Preparazione dati
-train_data = prepare_data(train_data)
-val_data = prepare_data(val_data)
+train_data = prepare_data(train)
+val_data = prepare_data(val)
 
-'''
-# Definizione del modello
-model = Transformer(sampling_frequency, ce_output_size, hidden_size, num_heads, t_output_size)
-'''
+# Creazione del DataLoader
+train_data = CustomDataset(train_data)
+val_data = CustomDataset(val_data)
+train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True, drop_last=True)
+val_dataloader = DataLoader(val_data, batch_size=batch_size, shuffle=True, drop_last=True)
+
+# Definizione transformer
 model = Transformer(segment_length, hidden_dim, output_dim, num_heads)
+model = model.to(device)
 
 # Definizione dell'ottimizzatore (AdamW)
 optimizer = optim.AdamW(model.parameters(), lr=0.001)
@@ -50,15 +62,15 @@ scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.3, patience=10, th
 
 # Ciclo di training
 num_epochs = 10
-val_losses = []  # Lista per memorizzare le loss di validazione per il controllo dell'arresto anticipato
+val_losses = []
 for epoch in range(num_epochs):
     
-    print(f'###########################\nEPOCA: {epoch}...')
+    print(f'EPOCA: {epoch}...')
 
     # Training
-    train_loss = train_model(model, train_data, optimizer)
+    train_loss, model = train_model(model, train_dataloader, batch_size, optimizer, device)
     # Validation
-    val_loss = validate_model(model, val_data)
+    val_loss, model = validate_model(model, val_dataloader, batch_size, device)
 
     val_losses.append(val_loss)
 

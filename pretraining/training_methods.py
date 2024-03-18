@@ -3,95 +3,93 @@ import torch.nn as nn
 import matplotlib.pyplot as plt
 import numpy as np
 from utils import apply_mask
+from tqdm import tqdm
 
 
 # Criterio di minimizzazione dell'errore
 criterion = nn.MSELoss()
 
 # Calcolo della loss
-def masked_prediction_loss(outputs, target, mask):
-
+def masked_prediction_loss(outputs, target, masks, batch_size):
+    
     loss = 0
+    num_signals = len(outputs)
 
-    for signal, output in outputs.item():
+    for i in range(batch_size):
+        for signal, output in outputs.items():
+            masked_output = output[:, i, :] * (1 - masks[i, :])
+            masked_target = target[signal][:, i, :] * (1 - masks[i, :])
+            loss += torch.sqrt(criterion(masked_output, masked_target))
 
-        masked_output = output * mask
-        masked_target = target[signal] * mask
-        loss += torch.sqrt(criterion(masked_output, masked_target))
-
-    return loss
+    return loss / (num_signals * batch_size)
 
 # Train di un epoca
-def train_model(model, train_data, optimizer):
+def train_model(model, dataloader, batch_size, optimizer, device):
     model.train()
     train_loss = 0.0
+    num_batches = len(dataloader)
 
-    # Calcolo del numero dei segmenti
-    num_segments = len(train_data[next(iter(train_data))])
-
-    for i in range(num_segments):
-
-        print('Segmento ', i)
-
-        # Recupero dell'i-esima tripla di segmenti (uno per segnale)
-        segment_data = {}
-        for signal, segments in train_data.items():
-            segment_data[signal] = segments[i]
-
-        segment_masked_data, mask = apply_mask(segment_data)
-
-        #stampa_grafico(segment_data, segment_masked_data)
+    progress_bar = tqdm(total=num_batches, desc="Train batch analizzati")
+    for batch in dataloader:
+        batch = {signal: data.to(device) for signal, data in batch.items()}
 
         # Azzeramento dei gradienti
         optimizer.zero_grad()
 
-        # Passaggio della tripla dei segmenti mascherati al modello
-        output_segments = model(segment_masked_data)
+        masked_batch, masks = apply_mask(batch, batch_size, device)
 
-        # Calcolo della loss e aggiornamento dei pesi
-        loss = masked_prediction_loss(output_segments, segment_data, mask)
+        # Passaggio del batch al modello
+        output_segments = model(masked_batch)
+
+        # Stampa i grafici 
+        segment_data = {signal: data[0] for signal, data in batch.items()}
+        segment_outputs = {signal: data[0] for signal, data in output_segments.items()}
+        stampa_grafico(segment_data, segment_outputs, masks[0])
+
+        # Calcolo della loss
+        loss = masked_prediction_loss(output_segments, batch, masks, batch_size)
+
+        # Aggiornamento dei pesi
         loss.backward()
         optimizer.step()
 
         # Accumulo della loss
         train_loss += loss.item()
 
-    return train_loss / num_segments
+        progress_bar.update(1)
+    progress_bar.close()
+
+    return train_loss / num_batches, model
 
 # Validation di un epoca
-def validate_model(model, val_data, masked_val_data, val_masks):
-
+def validate_model(model, dataloader, batch_size, device):
     model.eval()
     val_loss = 0.0
-    num_segments = len(val_data[next(iter(val_data))])
+    num_batches = len(dataloader)
 
     with torch.no_grad():
+        
+        progress_bar = tqdm(total=num_batches, desc="Val batch analizzati")
+        for batch in dataloader:
+            batch = {signal: data.to(device) for signal, data in batch.items()}
 
-        for i in range(num_segments):
+            masked_batch, masks = apply_mask(batch, batch_size, device)
 
-            # Recupero dell'i-esima tripla di segmenti (uno per segnale)
-            segment_data = {}
-            segment_masked_data = {}
-            segment_masks = {}
-            for signal, segments in val_data.items():
-                segment_data[signal] = segments[i]
-            for signal, segments in masked_val_data.items():
-                segment_masked_data[signal] = segments[i]
-            for signal, segments in val_masks.items():
-                segment_masks[signal] = segments[i]
-
-            # Passaggio della tripla di segmenti mascherati al modello
-            outputs = model(segment_masked_data)
+            # Passaggio del batch al modello
+            output_segments = model(masked_batch)
 
             # Calcolo della loss
-            loss = masked_prediction_loss(outputs, segment_data, segment_masks)
-            
+            loss = masked_prediction_loss(output_segments, batch, masks, batch_size)
+
             # Accumulo della loss
             val_loss += loss.item()
 
-    # Calcola la loss media per la validazione
-    return val_loss / num_segments
+            progress_bar.update(1)
+        progress_bar.close()
 
+    # Calcola la loss media per la validazione
+    return val_loss / num_batches, model
+    
 # Metodo per il criterio di stop anticipato
 def early_stopping(val_losses, patience=10):
     if len(val_losses) < patience + 1:
@@ -104,32 +102,50 @@ def early_stopping(val_losses, patience=10):
     return True
 
 # Metodo provvisorio per la stampa dei dati di un singolo segmento
-def stampa_grafico(segment_data, segment_masked_data):
-
+def stampa_grafico(segment_data, outputs, mask):
     time = np.arange(240) / 4
+
+    print(mask.size())
+
+    zero_intervals = []
+    start_idx = None
+    mask = mask.cpu().numpy() if isinstance(mask, torch.Tensor) else mask
+
+    for i, val in enumerate(mask):
+        if val == 0 and start_idx is None:
+            start_idx = i
+        elif val == 1 and start_idx is not None:
+            zero_intervals.append((start_idx, i - 1))
+            start_idx = None
+
+    if start_idx is not None:
+        zero_intervals.append((start_idx, len(mask) - 1))
 
     plt.figure(figsize=(10, 6))
 
     plt.subplot(3, 1, 1)
-    plt.plot(time, segment_data['bvp'], color='blue')
-    plt.plot(time, segment_masked_data['bvp'], color='green')
-    #plt.plot(time, outputs['bvp'], color='red')
+    plt.plot(time, segment_data['bvp'].cpu().numpy(), color='blue')
+    for start, end in zero_intervals:
+        plt.fill_between(time[start:end+1], segment_data['bvp'][start:end+1].cpu().numpy().flatten(), color='gray')
+    plt.plot(time, outputs['bvp'].detach().cpu().numpy().flatten(), color='red')
     plt.title('Blood Volume Pulse (BVP)')
     plt.xlabel('Tempo (s)')
     plt.ylabel('BVP')
 
     plt.subplot(3, 1, 2)
-    plt.plot(time, segment_data['eda'], color='blue')
-    plt.plot(time, segment_masked_data['eda'], color='green')
-    #plt.plot(time, outputs['eda'], color='red')
+    plt.plot(time, segment_data['eda'].cpu().numpy(), color='blue')
+    for start, end in zero_intervals:
+        plt.fill_between(time[start:end+1], segment_data['eda'][start:end+1].cpu().numpy().flatten(), color='gray')
+    plt.plot(time, outputs['eda'].detach().cpu().numpy().flatten(), color='red')
     plt.title('Electrodermal Activity (EDA)')
     plt.xlabel('Tempo (s)')
     plt.ylabel('EDA')
 
     plt.subplot(3, 1, 3)
-    plt.plot(time, segment_data['hr'], color='blue')
-    plt.plot(time, segment_masked_data['hr'], color='green')
-    #plt.plot(time, outputs['hr'], color='red')
+    plt.plot(time, segment_data['hr'].cpu().numpy(), color='blue')
+    for start, end in zero_intervals:
+        plt.fill_between(start, end, color='gray')
+    plt.plot(time, outputs['hr'].detach().cpu().numpy().flatten(), color='red')
     plt.title('Heart Rate (HR)')
     plt.xlabel('Tempo (s)')
     plt.ylabel('HR')
