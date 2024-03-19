@@ -13,12 +13,13 @@ signals = ['bvp', 'eda', 'hr'] # Segnali considerati
 sampling_frequency = 4 # Frequenza di campionamento unica in Hz
 segment_length = 240 # Lunghezza dei segmenti in time steps
 masking_ratio = 0.15 # Rapporto di valori mascherati
-lm = 12 # Media della lunghezza delle sequenze mascherate
+lm = 3 # Media della lunghezza delle sequenze mascherate
 train_data_ratio = 0.85 # Proporzione dati per la validazione sul totale
-batch_size = 32 # Dimensione di un batch di dati (in numero di segmenti)
+batch_size = 256 # Dimensione di un batch di dati (in numero di segmenti)
 
 # Model data
-hidden_dim = 60
+d_model = 256
+dropout = 0.1
 output_dim = 16
 num_heads = 2
 
@@ -35,23 +36,31 @@ else:
     print("GPU non disponibile. Si sta utilizzando la CPU.")
 
 # Caricamento e preparazione dei dati
+print('Caricamento dei dati...')
 data = load_data(data_path, signals)
 
 # Suddivisione dei dati in train e val
+print('Split dei dati in train/val...')
 train, val = data_split(data, train_data_ratio, signals)
+print('Numero di segmenti per training: ', len(train['bvp']))
+print('Numero di segmenti per validation: ', len(val['bvp']))
 
 # Preparazione dati
+print('Conversione dati in tensori')
 train_data = prepare_data(train)
 val_data = prepare_data(val)
 
 # Creazione del DataLoader
+print('Suddivisione dati in batch...')
 train_data = CustomDataset(train_data)
 val_data = CustomDataset(val_data)
 train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True, drop_last=True)
 val_dataloader = DataLoader(val_data, batch_size=batch_size, shuffle=True, drop_last=True)
 
 # Definizione transformer
-model = Transformer(segment_length, hidden_dim, output_dim, num_heads)
+print('Creazione del modello...')
+#model = Transformer(segment_length, hidden_dim, output_dim, num_heads)
+model = Transformer(signals, segment_length, d_model, num_heads, dropout, output_dim)
 model = model.to(device)
 
 # Definizione dell'ottimizzatore (AdamW)
@@ -65,7 +74,7 @@ num_epochs = 10
 val_losses = []
 for epoch in range(num_epochs):
     
-    print(f'EPOCA: {epoch}')
+    print(f'\nEPOCA: {epoch}')
 
     # Training
     train_loss, model = train_model(model, train_dataloader, batch_size, optimizer, device)

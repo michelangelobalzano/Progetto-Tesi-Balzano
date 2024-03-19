@@ -48,6 +48,7 @@ def train_model(model, dataloader, batch_size, optimizer, device):
             segment_outputs = {signal: data[i] for signal, data in output_segments.items()}
             stampa_grafico(segment_data, segment_outputs, masks[i])
         '''
+        
         # Calcolo della loss
         loss = masked_prediction_loss(output_segments, batch, masks, batch_size)
 
