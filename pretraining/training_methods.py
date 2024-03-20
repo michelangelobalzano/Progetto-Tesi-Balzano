@@ -2,55 +2,55 @@ import torch
 import torch.nn as nn
 import matplotlib.pyplot as plt
 import numpy as np
-from utils import apply_mask
+from utils import generate_masks
 from tqdm import tqdm
 
 
 # Criterio di minimizzazione dell'errore
-criterion = nn.MSELoss()
+criterion = nn.MSELoss(reduction='mean')
 
 # Calcolo della loss
-def masked_prediction_loss(outputs, target, masks, batch_size):
+def masked_prediction_loss(predictions, true, masks):
     
-    loss = 0
-    num_signals = len(outputs)
+    masked_predictions = predictions * masks
+    masked_true = true * masks
 
-    for i in range(batch_size):
-        for signal, output in outputs.items():
-            masked_output = output[:, i, :] * (1 - masks[i, :])
-            masked_target = target[signal][:, i, :] * (1 - masks[i, :])
-            loss += torch.sqrt(criterion(masked_output, masked_target))
-
-    return loss / (num_signals * batch_size)
+    return criterion(masked_predictions, masked_true)
 
 # Train di un epoca
-def train_model(model, dataloader, batch_size, optimizer, device):
+def train_model(model, dataloader, num_signals, segment_length, iperparametri, optimizer, device):
     model.train()
     train_loss = 0.0
     num_batches = len(dataloader)
 
     progress_bar = tqdm(total=num_batches, desc="Train batch analizzati")
     for batch in dataloader:
-        batch = {signal: data.to(device) for signal, data in batch.items()}
 
         # Azzeramento dei gradienti
         optimizer.zero_grad()
 
-        masked_batch, masks = apply_mask(batch, batch_size, device)
+        # Generazione delle maschere
+        masks = generate_masks(iperparametri['batch_size'], iperparametri['masking_ratio'], iperparametri['lm'], num_signals, segment_length, device)
+
+        # Applicazione della maschera
+        masked_batch = batch * masks
 
         # Passaggio del batch al modello
-        output_segments = model(masked_batch)
+        predictions = model(masked_batch)
 
-        # Stampa i grafici
-        '''
-        for i in range(32):
-            segment_data = {signal: data[i] for signal, data in batch.items()}
-            segment_outputs = {signal: data[i] for signal, data in output_segments.items()}
-            stampa_grafico(segment_data, segment_outputs, masks[i])
-        '''
-        
+        # Stampa dimensioni tensori per prova
+        #print('input size: ', batch.size())
+        #print('masked batch size: ', masked_batch.size())
+        #print('predictions size: ', predictions.size())
+        # Stampa dati del primo segmento del batch del primo segnale per prova
+        #print('input: ', batch[0,0,:])
+        #print('mask: ', masks[0,0,:])
+        #input()
+        #print('masked input: ', masked_batch[0,0,:])
+        #print('predictions: ', predictions[0,0,:])
+
         # Calcolo della loss
-        loss = masked_prediction_loss(output_segments, batch, masks, batch_size)
+        loss = masked_prediction_loss(predictions, batch, masks)
 
         # Aggiornamento dei pesi
         loss.backward()
@@ -65,7 +65,8 @@ def train_model(model, dataloader, batch_size, optimizer, device):
     return train_loss / num_batches, model
 
 # Validation di un epoca
-def validate_model(model, dataloader, batch_size, device):
+def validate_model(model, dataloader, num_signals, segment_length, iperparametri, device):
+    
     model.eval()
     val_loss = 0.0
     num_batches = len(dataloader)
@@ -74,15 +75,18 @@ def validate_model(model, dataloader, batch_size, device):
         
         progress_bar = tqdm(total=num_batches, desc="Val batch analizzati")
         for batch in dataloader:
-            batch = {signal: data.to(device) for signal, data in batch.items()}
+            
+            # Generazione delle maschere
+            masks = generate_masks(iperparametri['batch_size'], iperparametri['masking_ratio'], iperparametri['lm'], num_signals, segment_length, device)
 
-            masked_batch, masks = apply_mask(batch, batch_size, device)
+            # Applicazione della maschera
+            masked_batch = batch * masks
 
             # Passaggio del batch al modello
-            output_segments = model(masked_batch)
+            predictions = model(masked_batch)
 
             # Calcolo della loss
-            loss = masked_prediction_loss(output_segments, batch, masks, batch_size)
+            loss = masked_prediction_loss(predictions, batch, masks)
 
             # Accumulo della loss
             val_loss += loss.item()

@@ -9,20 +9,19 @@ def load_data(file_path, signals):
         data[signal] = pd.read_csv(file_path[signal])
     return data
 
-# Preparazione dei dati
-# Conversione di ogni segmento di dati in un tensore
-# L'output è un dizionario avente come chiave il nome del sensore e come valore la lista di segmenti convertita in tensori
-# {
-#     'bvp': [tensor_segment_1, tensor_segment_2, ...],
-#     'eda': [tensor_segment_1, tensor_segment_2, ...],
-#     'hr': [tensor_segment_1, tensor_segment_2, ...]
-# }
-def prepare_data(data):
+# Conversione dei dati in un tensore di dimensioni (num_signals, num_segments, segment_length)
+def prepare_data(data, num_signals, num_segments, segment_length):
     
-    prepared_data = {}
-    for signal, df in data.items():
-        segments = []
-        for segment in df.groupby('segment_id'):
-            segments.append(torch.tensor(segment[1].iloc[:, :-1].values, dtype=torch.float32))
-        prepared_data[signal] = segments
+    prepared_data = torch.zeros(num_signals, num_segments, segment_length)
+    
+    for i, (key, df) in enumerate(data.items()):
+
+        for k, (segment_id, segment_data) in enumerate(df.groupby('segment_id')):
+            segment_tensor = torch.tensor(segment_data.iloc[:, :-1].values, dtype=torch.float32)
+            prepared_data[i, k] = segment_tensor.squeeze()
+    
     return prepared_data
+
+# Collate Function per il DataLoader
+def my_collate_fn(batch):
+    return torch.stack([item[0] for item in batch])
