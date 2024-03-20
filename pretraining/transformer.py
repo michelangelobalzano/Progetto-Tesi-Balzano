@@ -138,7 +138,6 @@ class PositionalEncoding(nn.Module):
         self.pe[:, 0::2] = torch.sin(position * div_term)
         self.pe[:, 1::2] = torch.cos(position * div_term)
         self.pe = scale_factor * self.pe.unsqueeze(0).transpose(0, 1)
-        #self.register_buffer('pe', pe)  # this stores the variable in the state_dict (used for non-trainable variables)
 
     def forward(self, x):
         
@@ -165,15 +164,16 @@ class MyEncoderLayer(nn.modules.Module):
     def forward(self, data, src_mask=None, is_causal=False, src_key_padding_mask=None) -> Tensor:
         
         data2 = self.self_attn(data, data, data)[0]
-        data = data + self.dropout1(data2)  # (seq_len, batch_size, d_model)
-        data = data.permute(1, 2, 0)  # (batch_size, d_model, seq_len)
+        data = data + self.dropout1(data2)  # [segment_length, batch_size, d_model]
+        data = data.permute(1, 2, 0)  # [batch_size, d_model, segment_length]
         data = self.norm1(data)
-        data = data.permute(2, 0, 1)  # restore (seq_len, batch_size, d_model)
+        data = data.permute(2, 0, 1)  # [segment_length, batch_size, d_model]
         data2 = self.linear2(self.dropout(self.activation(self.linear1(data))))
-        data = data + self.dropout2(data2)  # (seq_len, batch_size, d_model)
-        data = data.permute(1, 2, 0)  # (batch_size, d_model, seq_len)
+        data = data + self.dropout2(data2)  # [segment_length, batch_size, d_model]
+        data = data.permute(1, 2, 0)  # [batch_size, d_model, segment_length]
         data = self.norm2(data)
-        data = data.permute(2, 0, 1)  # restore (seq_len, batch_size, d_model)
+        data = data.permute(2, 0, 1)  # [segment_length, batch_size, d_model]
+
         return data
 
 class TSTransformer(nn.Module):
@@ -191,7 +191,7 @@ class TSTransformer(nn.Module):
         self.project_inp = nn.Linear(self.num_signals, self.d_model)
         self.pos_enc = PositionalEncoding(segment_length, self.d_model, self.dropout, self.device)
         encoder_layer = MyEncoderLayer(self.d_model, self.num_heads, self.d_model, self.dropout)
-        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, self.num_layers, mask_check=False)
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, self.num_layers, mask_check=False, enable_nested_tensor=False)
         self.output_layer = nn.Linear(self.d_model, self.num_signals)
         self.act = F.gelu
         self.dropout1 = nn.Dropout(self.dropout)
@@ -199,9 +199,7 @@ class TSTransformer(nn.Module):
     def forward(self, data):
         # Dimensione data: [batch_size, num_signals, segment_length]
 
-        # Permutazione perché la convenzione della dim per i transformer è:
-        # [seq_length, batch_size, feat_dim]
-        inp = data.permute(2, 0, 1)
+        inp = data.permute(2, 0, 1) # [seq_length, batch_size, feat_dim]
 
         # Moltiplicazione per la redice quadrata di d_model per scalare l'input
         # come descritto nel paper "Attention is All You Need".
@@ -210,13 +208,20 @@ class TSTransformer(nn.Module):
         # Aggiunta del positional encoding
         inp = self.pos_enc(inp)
 
-        output = self.transformer_encoder(inp)  # (seq_length, batch_size, d_model)
-        output = self.act(output)  # the output transformer encoder/decoder embeddings don't include non-linearity
-        output = output.permute(1, 0, 2)  # (batch_size, seq_length, d_model)
-        output = self.dropout1(output)
-        # Most probably defining a Linear(d_model,feat_dim) vectorizes the operation over (seq_length, batch_size).
-        output = self.output_layer(output)  # (batch_size, seq_length, feat_dim)
+        # Layer di encoder
+        output = self.transformer_encoder(inp)  # [segment_length, batch_size, d_model]
+        
+        # Funzione di attivazione
+        output = self.act(output)
+        
+        output = output.permute(1, 0, 2)  # [batch_size, segment_length, d_model]
 
-        output = output.permute(0, 2, 1)
+        # Dropout
+        output = self.dropout1(output)
+
+        # Layer di output
+        output = self.output_layer(output)  # [batch_size, segment_length, num_signals]
+
+        output = output.permute(0, 2, 1) # [batch_size, num_signals, segment_length]
 
         return output

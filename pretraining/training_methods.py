@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
-import matplotlib.pyplot as plt
 import numpy as np
 from utils import generate_masks
 from tqdm import tqdm
+from graphs_methods import try_graph
 
 
 # Criterio di minimizzazione dell'errore
@@ -108,66 +108,10 @@ def early_stopping(val_losses, patience=10):
 
     return True
 
-# Metodo provvisorio per la stampa dei dati di un singolo segmento
-def stampa_grafico(segment_data, outputs, mask):
-
-    print(segment_data['bvp'])
-    print(outputs['bvp'])
-    print(mask)
-
-    time = np.arange(240) / 4
-
-    zero_intervals = []
-    start_idx = None
-    mask = mask.cpu().numpy() if isinstance(mask, torch.Tensor) else mask
-
-    for i, val in enumerate(mask):
-        if val == 0 and start_idx is None:
-            start_idx = i
-        elif val == 1 and start_idx is not None:
-            zero_intervals.append((start_idx, i - 1))
-            start_idx = None
-
-    if start_idx is not None:
-        zero_intervals.append((start_idx, len(mask) - 1))
-
-    plt.figure(figsize=(10, 6))
-
-    plt.subplot(3, 1, 1)
-    plt.plot(time, segment_data['bvp'].cpu().numpy(), color='blue')
-    plt.plot(time, outputs['bvp'].detach().cpu().numpy().flatten(), color='red')
-    min = np.min([np.min(segment_data['bvp'].cpu().numpy()[:, 0]), np.min(outputs['bvp'].detach().cpu().numpy()[:, 0])])
-    max = np.max([np.max(segment_data['bvp'].cpu().numpy()[:, 0]), np.max(outputs['bvp'].detach().cpu().numpy()[:, 0])])
-    y_values = [min, max]
-    for start, end in zero_intervals:
-        plt.fill_betweenx(y_values, start/4, end/4, color='grey')
-    plt.title('Blood Volume Pulse (BVP)')
-    plt.xlabel('Tempo (s)')
-    plt.ylabel('BVP')
-
-    plt.subplot(3, 1, 2)
-    plt.plot(time, segment_data['eda'].cpu().numpy(), color='blue')
-    plt.plot(time, outputs['eda'].detach().cpu().numpy().flatten(), color='red')
-    min = np.min([np.min(segment_data['eda'].cpu().numpy()[:, 0]), np.min(outputs['eda'].detach().cpu().numpy()[:, 0])])
-    max = np.max([np.max(segment_data['eda'].cpu().numpy()[:, 0]), np.max(outputs['eda'].detach().cpu().numpy()[:, 0])])
-    y_values = [min, max]
-    for start, end in zero_intervals:
-        plt.fill_betweenx(y_values, start/4, end/4, color='grey')
-    plt.title('Electrodermal Activity (EDA)')
-    plt.xlabel('Tempo (s)')
-    plt.ylabel('EDA')
-
-    plt.subplot(3, 1, 3)
-    plt.plot(time, segment_data['hr'].cpu().numpy(), color='blue')
-    min = np.min([np.min(segment_data['hr'].cpu().numpy()[:, 0]), np.min(outputs['hr'].detach().cpu().numpy()[:, 0])])
-    max = np.max([np.max(segment_data['hr'].cpu().numpy()[:, 0]), np.max(outputs['hr'].detach().cpu().numpy()[:, 0])])
-    y_values = [min, max]
-    for start, end in zero_intervals:
-        plt.fill_betweenx(y_values, start/4, end/4, color='grey')
-    plt.plot(time, outputs['hr'].detach().cpu().numpy().flatten(), color='red')
-    plt.title('Heart Rate (HR)')
-    plt.xlabel('Tempo (s)')
-    plt.ylabel('HR')
-
-    plt.tight_layout()
-    plt.show()
+def try_model(model, dataloader, num_signals, segment_length, iperparametri, device):
+    with torch.no_grad():
+        first_batch = next(iter(dataloader))
+        masks = generate_masks(iperparametri['batch_size'], iperparametri['masking_ratio'], iperparametri['lm'], num_signals, segment_length, device)
+        masked_batch = first_batch * masks
+        predictions = model(masked_batch)
+        try_graph(first_batch[0,:,:], masks[0,:,:], predictions[0,:,:], num_signals, segment_length)

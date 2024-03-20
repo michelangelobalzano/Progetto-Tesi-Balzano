@@ -7,7 +7,7 @@ import torch
 import csv
 from datetime import datetime
 from data_preparation import load_data, prepare_data, my_collate_fn
-from training_methods import train_model, validate_model, early_stopping
+from training_methods import train_model, validate_model, early_stopping, try_model
 from graphs_methods import losses_graph
 
 data_path = {'bvp': 'processed_data/bvp.csv', 'eda': 'processed_data/eda.csv', 'hr': 'processed_data/hr.csv'} # Percorsi dei dati
@@ -105,6 +105,8 @@ for epoch in range(num_epochs):
 
     # Aggiorna lo scheduler della velocità di apprendimento in base alla loss di validazione
     scheduler.step(val_loss)
+
+    try_model(model, val_dataloader, num_signals, segment_length, iperparametri, device)
 
 # Salvataggio delle loss su file
 print('Salvataggio informazioni training su file...')
