@@ -18,12 +18,12 @@ train_data_ratio = 0.85 # Proporzione dati per la validazione sul totale
 
 # Iperparametri modello
 iperparametri = {
-    'batch_size' : 32, # Dimensione di un batch di dati (in numero di segmenti)
+    'batch_size' : 256, # Dimensione di un batch di dati (in numero di segmenti)
     'masking_ratio' : 0.15, # Rapporto di valori mascherati
-    'lm' : 3, # Media della lunghezza delle sequenze mascherate
+    'lm' : 12, # Media della lunghezza delle sequenze mascherate
     'd_model' : 128, #
     'dropout' : 0.1, #
-    'num_heads' : 4, # 
+    'num_heads' : 2, # 
     'num_layers' : 3 # Numero di layer dell'encoder
 }
 

@@ -50,7 +50,7 @@ def train_model(model, dataloader, num_signals, segment_length, iperparametri, o
         #print('predictions: ', predictions[0,0,:])
 
         # Calcolo della loss
-        loss = masked_prediction_loss(predictions, batch, masks)
+        loss = masked_prediction_loss(predictions, batch, ~masks)
 
         # Aggiornamento dei pesi
         loss.backward()
@@ -86,7 +86,7 @@ def validate_model(model, dataloader, num_signals, segment_length, iperparametri
             predictions = model(masked_batch)
 
             # Calcolo della loss
-            loss = masked_prediction_loss(predictions, batch, masks)
+            loss = masked_prediction_loss(predictions, batch, ~masks)
 
             # Accumulo della loss
             val_loss += loss.item()
