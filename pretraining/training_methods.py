@@ -12,8 +12,8 @@ criterion = nn.MSELoss(reduction='mean')
 # Calcolo della loss
 def masked_prediction_loss(predictions, true, masks):
     
-    masked_predictions = predictions * masks
-    masked_true = true * masks
+    masked_true = torch.masked_select(true, masks)
+    masked_predictions = torch.masked_select(predictions, masks)
 
     return criterion(masked_predictions, masked_true)
 
@@ -50,7 +50,7 @@ def train_model(model, dataloader, num_signals, segment_length, iperparametri, o
         #print('predictions: ', predictions[0,0,:])
 
         # Calcolo della loss
-        loss = masked_prediction_loss(predictions, batch, ~masks)
+        loss = masked_prediction_loss(predictions, batch, masks)
 
         # Aggiornamento dei pesi
         loss.backward()
@@ -86,7 +86,7 @@ def validate_model(model, dataloader, num_signals, segment_length, iperparametri
             predictions = model(masked_batch)
 
             # Calcolo della loss
-            loss = masked_prediction_loss(predictions, batch, ~masks)
+            loss = masked_prediction_loss(predictions, batch, masks)
 
             # Accumulo della loss
             val_loss += loss.item()

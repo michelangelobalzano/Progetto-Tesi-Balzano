@@ -106,7 +106,7 @@ for epoch in range(num_epochs):
     # Aggiorna lo scheduler della velocità di apprendimento in base alla loss di validazione
     scheduler.step(val_loss)
 
-    try_model(model, val_dataloader, num_signals, segment_length, iperparametri, device)
+    #try_model(model, val_dataloader, num_signals, segment_length, iperparametri, device)
 
 # Salvataggio delle loss su file
 print('Salvataggio informazioni training su file...')
