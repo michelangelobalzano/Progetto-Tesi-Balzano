@@ -5,12 +5,9 @@ from tqdm import tqdm
 
 from preprocessing import time_calculation, resampling
 
-# Ricostruzione dei
-
 users = ['S2', 'S3', 'S4', 'S5', 'S6',
           'S7', 'S8', 'S9', 'S10', 'S11', 
           'S13', 'S14', 'S15', 'S16', 'S17']
-
 
 progress_bar = tqdm(total=len(users), desc="User preprocessing")
 for user_id in users:
@@ -59,12 +56,15 @@ for user_id in users:
     # Associazione delle etichette con ricampionamento da 700 a 4 Hz
     rapporto = 700/4
     
+    # Ricalcolo lunghezza segnale bvp per farlo terminare al secondo preciso
     len_bvp = int((len(bvp)- (len(bvp)%4)))
     bvp = bvp.iloc[:len_bvp]
 
+    # Ricalcolo lunghezza labels per farle terminare al secondi preciso di bvp
     len_labels = int(len(bvp) * rapporto)
     labels = labels[:len_labels]
     
+    # Ricalcolo delle etichette da 700Hz a 4 Hz in base al valore più frequente per ogni intervallo
     nuove_etichette = []
     pos = 0
     while (pos < len(labels)):
