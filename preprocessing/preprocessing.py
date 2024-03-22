@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import numpy as np
 from datetime import timedelta
+from datetime import datetime
 
 output_directory = 'data\\'
 # Colonne dei dataframe
@@ -35,7 +36,7 @@ n_max_segmenti = 500
 # Aggiunta delle intestazioni alle colonne
 # Aggiunta dell'accelerazione totale
 ####################################################################################################################
-def structure_modification(df, user_id, dataset_name, df_type):
+def structure_modification(df, df_type):
 
     if(df_type == 'acc'):
         cols = acc_cols
@@ -303,3 +304,29 @@ def delete_random_segments(users, dataset_name, bvp, eda, hr, limit=n_max_segmen
     print(f'numero di segmenti eliminati: {num_segmenti_cancellati}')
 
     return bvp, eda, hr
+
+
+
+
+
+####################################################################################################################
+# Ritaglio del dataset negli intervalli etichettati
+####################################################################################################################
+def cut_and_label(df, intervals, valence, arousal):
+    
+    df_output = pd.DataFrame()
+    #df.to_csv(f'{output_directory}_originale.csv', index=False)
+    print(df['time'])
+    
+    for i, (start, end) in enumerate(intervals):
+        
+        df_ritagliato =  df.loc[(df['time'] >= start) & (df['time'] <= end)]
+        df_ritagliato['valence'] = valence[i]
+        df_ritagliato['arousal'] = arousal[i]
+
+        df_ritagliato.to_csv(f'{output_directory}_prova.csv', index=False)
+        input()
+
+        df_output = pd.concat([df_output, df_ritagliato])
+    
+    return df_output

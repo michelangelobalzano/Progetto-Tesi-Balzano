@@ -76,10 +76,10 @@ for user_id in users:
     for df_type in df_types:
 
         # Modifica dei dataframe
-        acc[user_id][df_type] = structure_modification(acc[user_id][df_type].copy(), user_id, dataset_name, 'acc')
-        bvp[user_id][df_type] = structure_modification(bvp[user_id][df_type].copy(), user_id, dataset_name, 'bvp')
-        eda[user_id][df_type] = structure_modification(eda[user_id][df_type].copy(), user_id, dataset_name, 'eda')
-        hr[user_id][df_type] = structure_modification(hr[user_id][df_type].copy(), user_id, dataset_name, 'hr')
+        acc[user_id][df_type] = structure_modification(acc[user_id][df_type].copy(), 'acc')
+        bvp[user_id][df_type] = structure_modification(bvp[user_id][df_type].copy(), 'bvp')
+        eda[user_id][df_type] = structure_modification(eda[user_id][df_type].copy(), 'eda')
+        hr[user_id][df_type] = structure_modification(hr[user_id][df_type].copy(), 'hr')
 
         # Determinazione momenti di off-body e sleep
         eda[user_id][df_type] = off_body_detection(eda[user_id][df_type])
