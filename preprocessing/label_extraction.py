@@ -112,20 +112,34 @@ for user_id in users:
 
     # Standardizzazione delle etichette di valenza e attivazione
     valence = list(map(int, valence))
+    std_val = []
     val_mean = np.mean(valence)
-    val_std_dev = np.std(valence)
-    valence = (valence - val_mean) / val_std_dev
+    for i in range(len(valence)):
+        if (valence[i] >= val_mean + 0.5):
+            std_val.append('positive')
+        elif (valence[i] <= val_mean - 0.5):
+            std_val.append('negative')
+        else:
+            std_val.append('neutral')
 
     arousal = list(map(int, arousal))
     aro_mean = np.mean(arousal)
-    aro_std_dev = np.std(arousal)
-    arousal = (arousal - aro_mean) / aro_std_dev
+    arousal = list(map(int, arousal))
+    std_aro = []
+    aro_mean = np.mean(arousal)
+    for i in range(len(arousal)):
+        if (arousal[i] >= aro_mean + 0.5):
+            std_aro.append('positive')
+        elif (arousal[i] <= aro_mean - 0.5):
+            std_aro.append('negative')
+        else:
+            std_aro.append('neutral')
         
     # Associazione delle etichette ai task corrispondenti
     for i, valore in enumerate(bvp['task']):
         if valore in tasks:
-            bvp.loc[i, 'valence'] = valence[tasks.index(valore)]
-            bvp.loc[i, 'arousal'] = arousal[tasks.index(valore)]
+            bvp.loc[i, 'valence'] = std_val[tasks.index(valore)]
+            bvp.loc[i, 'arousal'] = std_aro[tasks.index(valore)]
         else:
             bvp.loc[i, 'valence'] = None
 

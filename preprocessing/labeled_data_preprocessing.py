@@ -119,13 +119,17 @@ def labeled_data_preprocessing(data_directory, df_name, signals, target_freq, w_
         for signal in set(signals) | set(['BVP_LABELED']):
             data_temp[signal] = segmentation(data[user_id][signal], segment_prefix=f'{df_name}_{user_id}_', w_size=w_size, w_step_size=w_step_size)
             segmented_data[signal] = pd.concat([segmented_data[signal], data_temp[signal]], axis=0, ignore_index=True)
-
         progress_bar.update(1)
     progress_bar.close()
 
     # Eliminazione dei segmenti creati che non contengono frequency * window_size valori
     for signal in set(signals) | set(['BVP_LABELED']):
         segmented_data[signal] = segmented_data[signal].groupby('segment_id').filter(lambda x: len(x) == target_freq * w_size)
+
+    # Applicazione delle etichette di maggioranza ad ogni segmento
+    for segment_id, segment in segmented_data['BVP_LABELED'].groupby('segment_id'):
+        segment['valence'] = segment['valence'].mode().iloc[0]
+        segment['arousal'] = segment['arousal'].mode().iloc[0]
 
     # Controllo che i segment_id dei tre dataset coincidono
     #valori_df1 = set(bvp_df.groupby('segment_id').groups.keys())
