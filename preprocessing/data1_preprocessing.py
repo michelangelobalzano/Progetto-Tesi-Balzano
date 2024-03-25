@@ -116,9 +116,6 @@ def data1_preprocessing(data_directory, df_name, signals, target_freq, w_size, w
     for signal in signals:
         segmented_data[signal] = segmented_data[signal].drop(['time','off-body', 'sleep'], axis=1)
 
-    #print('Cancellazione segmenti random...')
-    #bvp_df, eda_df, hr_df = delete_random_segments(users, df_name, bvp_df, eda_df, hr_df)
-
     # Esportazione delle features del dataset
     for signal in signals:
         print(f"Esportazione {signal}...")
