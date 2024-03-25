@@ -138,6 +138,9 @@ def labeled_data_preprocessing(data_directory, df_name, signals, target_freq, w_
     #coincidono = valori_df1 == valori_df2 == valori_df3
 
     # Esportazione delle features del dataset
-    for signal in set(signals) | set(['BVP_LABELED']):
+    for signal in signals:
         print(f"Esportazione {signal}...")
         export_df(segmented_data[signal], data_directory, df_name, signal)
+    print(f"Esportazione BVP...")
+    export_df(segmented_data['BVP_LABELED'], data_directory, df_name, 'BVP')
+    

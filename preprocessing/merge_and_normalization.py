@@ -1,43 +1,39 @@
 import pandas as pd
 
-dataset = ['labeled_data']# , 'data2', 'data3', 'data4', 'data5', 'data6', 'data7', 'data8', 'data9', 'data10'
-output_directory = 'processed_data\\'
+cols_to_normalize = {
+    'ACC': ['x', 'y', 'z'],
+    'BVP': ['bvp'],
+    'EDA': ['eda'],
+    'HR': ['hr'],
+    'TEMP': ['temp']
+}
 
-bvp, eda, hr = pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+def normalization(data_directory, df_names, signals, labeled=False):
 
+    ######################################################
+    # Merge
 
+    data = {}
+    for signal in signals:
+        data[signal] = pd.DataFrame()
 
-######################################################
-# Merge
-for data in dataset:
-    print(f'{data} processing...')
-    directory = f'data\\{data}\\'
+    for df_name in df_names:
+        print(f'{df_name} processing...')
+        directory = f'{data_directory}\\{df_name}\\'
 
-    bvp_df = pd.read_csv(f'{directory}bvp.csv')
-    eda_df = pd.read_csv(f'{directory}eda.csv')
-    hr_df = pd.read_csv(f'{directory}hr.csv')
+        for signal in signals:
+            df_temp = pd.read_csv(f'{directory}{signal}.csv')
+            data[signal] = pd.concat([data[signal], df_temp], axis=0, ignore_index=True)
 
-    bvp = pd.concat([bvp, bvp_df], axis=0, ignore_index=True)
-    eda = pd.concat([eda, eda_df], axis=0, ignore_index=True)
-    hr = pd.concat([hr, hr_df], axis=0, ignore_index=True)
-
-
-
-######################################################
-# Normalization
-bvp_mean = bvp['bvp'].mean()
-eda_mean = eda['eda'].mean()
-hr_mean = hr['hr'].mean()
-
-bvp_std = bvp['bvp'].std()
-eda_std = eda['eda'].std()
-hr_std = hr['hr'].std()
-
-bvp['bvp'] = (bvp['bvp'] - bvp_mean) / bvp_std
-eda['eda'] = (eda['eda'] - eda_mean) / eda_std
-hr['hr'] = (hr['hr'] - hr_mean) / hr_std
-
-# Esportazione
-bvp.to_csv(f'{output_directory}labeled_bvp.csv', index=False)
-eda.to_csv(f'{output_directory}labeled_eda.csv', index=False)
-hr.to_csv(f'{output_directory}labeled_hr.csv', index=False)
+    ######################################################
+    # Normalization
+            
+    for signal in signals:
+        for col in cols_to_normalize[signal]:
+            mean = data[signal][col].mean()
+            std = data[signal][col].std()
+            data[signal][col] = (data[signal][col] - mean) / std
+        if labeled:
+            data[signal].to_csv(f'processed_data\\{signal}_LABELED.csv', index=False)
+        else:
+            data[signal].to_csv(f'processed_data\\{signal}.csv', index=False)

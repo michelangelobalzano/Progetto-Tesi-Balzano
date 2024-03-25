@@ -123,8 +123,6 @@ for user_id in users:
             std_val.append('neutral')
 
     arousal = list(map(int, arousal))
-    aro_mean = np.mean(arousal)
-    arousal = list(map(int, arousal))
     std_aro = []
     aro_mean = np.mean(arousal)
     for i in range(len(arousal)):
