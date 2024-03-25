@@ -1,7 +1,6 @@
 import pandas as pd
 
-dataset = ['data1']# , 'data2', 'data3', 'data4', 'data5', 'data6', 'data7', 'data8', 'data9', 'data10'
-file_names = ['bvp.csv', 'eda.csv', 'hr.csv']
+dataset = ['labeled_data']# , 'data2', 'data3', 'data4', 'data5', 'data6', 'data7', 'data8', 'data9', 'data10'
 output_directory = 'processed_data\\'
 
 bvp, eda, hr = pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
@@ -39,6 +38,6 @@ eda['eda'] = (eda['eda'] - eda_mean) / eda_std
 hr['hr'] = (hr['hr'] - hr_mean) / hr_std
 
 # Esportazione
-bvp.to_csv(f'{output_directory}bvp.csv', index=False)
-eda.to_csv(f'{output_directory}eda.csv', index=False)
-hr.to_csv(f'{output_directory}hr.csv', index=False)
+bvp.to_csv(f'{output_directory}labeled_bvp.csv', index=False)
+eda.to_csv(f'{output_directory}labeled_eda.csv', index=False)
+hr.to_csv(f'{output_directory}labeled_hr.csv', index=False)

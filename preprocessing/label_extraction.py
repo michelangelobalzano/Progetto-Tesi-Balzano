@@ -2,8 +2,9 @@ import pickle
 import pandas as pd
 from collections import Counter
 from tqdm import tqdm
+import numpy as np
 
-from preprocessing import time_calculation, resampling
+from preprocessing_methods import time_calculation, resampling
 
 users = ['S2', 'S3', 'S4', 'S5', 'S6',
           'S7', 'S8', 'S9', 'S10', 'S11', 
@@ -21,7 +22,7 @@ progress_bar = tqdm(total=len(users), desc="User preprocessing")
 for user_id in users:
 
     # Lettura file BVP
-    bvp = pd.read_csv(f'data\\data9\\{user_id}\\BVP.csv', header=None)
+    bvp = pd.read_csv(f'data\\labeled_data\\{user_id}\\BVP.csv', header=None)
 
     # Calcolo del vettore dei tempi delle singole misurazioni
     df_time = time_calculation(bvp)
@@ -33,7 +34,7 @@ for user_id in users:
     bvp['time'] = pd.to_datetime(df_time, unit='s')
 
     # Lettura file pkl
-    with open(f'data\\data9\\{user_id}\\{user_id}.pkl', 'rb') as f:
+    with open(f'data\\labeled_data\\{user_id}\\{user_id}.pkl', 'rb') as f:
         file_pkl = pickle.load(f, encoding='latin1')
 
     pkl_data_list = file_pkl['signal']['wrist']['BVP'].tolist()
@@ -97,19 +98,28 @@ for user_id in users:
         stato = nuovo_stato
     bvp.loc[idx_inizio_sostituzione:, 'task'] = bvp.loc[idx_inizio_sostituzione:, 'task'].replace(4, 5)
 
-    
-
     # Lettura etichette e task corrispondenti da file csv
     valence = []
     arousal = []
     tasks_names = []
     tasks = []
-    label_df = pd.read_csv(f'data\\data9\\{user_id}\\{user_id}_quest.csv', sep=';', header=None)
+    label_df = pd.read_csv(f'data\\labeled_data\\{user_id}\\{user_id}_quest.csv', sep=';', header=None)
     tasks_names = label_df.iloc[1, 1:6].tolist()
     valence = label_df.iloc[17:22, 1].tolist()
     arousal = label_df.iloc[17:22, 2].tolist()
     for i in range(len(tasks_names)):
         tasks.append(task_numbers[tasks_names[i]])
+
+    # Standardizzazione delle etichette di valenza e attivazione
+    valence = list(map(int, valence))
+    val_mean = np.mean(valence)
+    val_std_dev = np.std(valence)
+    valence = (valence - val_mean) / val_std_dev
+
+    arousal = list(map(int, arousal))
+    aro_mean = np.mean(arousal)
+    aro_std_dev = np.std(arousal)
+    arousal = (arousal - aro_mean) / aro_std_dev
         
     # Associazione delle etichette ai task corrispondenti
     for i, valore in enumerate(bvp['task']):
@@ -121,7 +131,7 @@ for user_id in users:
 
     bvp = bvp.drop(['task'], axis=1)
 
-    bvp.to_csv(f'data\\data9\\{user_id}\\BVP_LABELED.csv', index=False)
+    bvp.to_csv(f'data\\labeled_data\\{user_id}\\BVP_LABELED.csv', index=False)
 
     progress_bar.update(1)
 progress_bar.close()

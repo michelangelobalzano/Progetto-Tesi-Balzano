@@ -1,24 +1,18 @@
 from os import listdir
 from os.path import isfile, join
 import pandas as pd
-from datetime import datetime, timedelta
 from tqdm import tqdm
-from preprocessing import structure_modification, segmentation, export_df, frequency, w_size
+from preprocessing_methods import structure_modification, segmentation, export_df, necessary_signals
+
 
 ####################################################################################################################
 # DATASET ETICHETTATO: dataset composto da 15 utenti, ognuno avente una registrazione
 ####################################################################################################################
 
-# Nome del dataset
-dataset_name = 'labeled_data'
-# Directory del dataset
-data_directory = f'data\{dataset_name}\\'
 # Id degli utenti
 users = ['S2', 'S3', 'S4', 'S5', 'S6',
           'S7', 'S8', 'S9', 'S10', 'S11', 
           'S13', 'S14', 'S15', 'S16', 'S17']
-# Numero degli intervalli di tempo etichettati
-num_intervals = 5
 
 
 
@@ -28,35 +22,34 @@ num_intervals = 5
 # Lettura dei dataset e creazione di un dizionario per ogni sensore
 # Ogni dizionario è composto da un dataset per ogni utente
 ####################################################################################################################
-def read_sensor_data():
+def read_sensor_data(data_directory, df_name, signals):
 
-    bvp, eda, hr = {}, {}, {}
+    data = {}
 
     progress_bar = tqdm(total=len(users), desc="Data reading")
     for user_id in users:
 
-        directory = data_directory + user_id + '\\'
+        data[user_id] = {}
+
+        directory = data_directory + df_name + '\\' + user_id + '\\'
 
         file_path = [f for f in listdir(directory) if isfile(join(directory, f))]
 
-        for file in file_path:
-                
-            if file.endswith('BVP_LABELED.csv'):
-                bvp[user_id] = pd.read_csv(join(directory, file), header=None)
-                bvp[user_id].columns = ['time', 'bvp', 'valence', 'arousal']
-                bvp[user_id] = bvp[user_id].iloc[1:]
+        for signal in set(signals) | set(necessary_signals) | set(['BVP_LABELED']):
+            
+            for file in file_path:
 
-            elif file.endswith('EDA.csv'):
-                eda[user_id] = pd.read_csv(join(directory, file), header=None)
+                if file.endswith(f'{signal}.csv'):
+                    data[user_id][signal] = pd.read_csv(join(directory, file), header=None)
+                    break
 
-            elif file.endswith('HR.csv'):
-                hr[user_id] = pd.read_csv(join(directory, file), header=None)
+        data[user_id]['BVP_LABELED'].columns = ['time', 'bvp', 'valence', 'arousal']
+        data[user_id]['BVP_LABELED'] = data[user_id]['BVP_LABELED'].iloc[1:]
 
         progress_bar.update(1)
-
     progress_bar.close()
 
-    return bvp, eda, hr
+    return data
 
 
 
@@ -76,73 +69,71 @@ def read_sensor_data():
 # Esecuzione del preprocessing
 ####################################################################################################################
 # Lettura del dataset
-bvp, eda, hr = read_sensor_data()
-
-# Dataframe di segmenti uniti
-bvp_df, eda_df, hr_df = pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
-
-progress_bar = tqdm(total=len(users), desc="User preprocessing")
-for user_id in users:
-
-    # Modifica dei dataframe
-    eda[user_id] = structure_modification(eda[user_id].copy(), 'eda')
-    hr[user_id] = structure_modification(hr[user_id].copy(), 'hr')
-
-    progress_bar.update(1)
-progress_bar.close()
-
-# Ritaglio degli intervalli etichettati
-progress_bar = tqdm(total=len(users), desc="Labeling")
-for user_id in users:
-
-    # Recupero dei time-stamp etichettati
-    labeled_times = bvp[user_id].loc[bvp[user_id]['valence'].notnull(), 'time']
-    # Ritaglio dei df lasciando solo gli intervalli etichettati
-    bvp[user_id]['time'] = pd.to_datetime(bvp[user_id]['time'])
-    eda[user_id]['time'] = pd.to_datetime(eda[user_id]['time'])
-    hr[user_id]['time'] = pd.to_datetime(hr[user_id]['time'])
-    bvp[user_id] = bvp[user_id][bvp[user_id]['time'].isin(labeled_times)]
-    eda[user_id] = eda[user_id][eda[user_id]['time'].isin(labeled_times)]
-    hr[user_id] = hr[user_id][hr[user_id]['time'].isin(labeled_times)]
-
-    progress_bar.update(1)
-progress_bar.close()
+def labeled_data_preprocessing(data_directory, df_name, signals, target_freq, w_size, w_step_size, user_max_segments):
     
+    # Lettura del dataset
+    data = read_sensor_data(data_directory, df_name, signals)
 
-progress_bar = tqdm(total=len(users), desc="Segmentation")
-for user_id in users:
+    progress_bar = tqdm(total=len(users), desc="User preprocessing")
+    for user_id in users:
 
-    # Dataframe di segmenti temporanei per utente
-    bvp_temp, eda_df_temp, hr_temp = pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+        # Modifica dei dataframe
+        for signal in set(signals) | set(necessary_signals):
 
-    # Produzione dei segmenti
-    bvp_temp = segmentation(bvp[user_id], segment_prefix=f'{dataset_name}_{user_id}_')
-    eda_temp = segmentation(eda[user_id], segment_prefix=f'{dataset_name}_{user_id}_')
-    hr_temp = segmentation(hr[user_id], segment_prefix=f'{dataset_name}_{user_id}_')
-    
-    bvp_df = pd.concat([bvp_df, bvp_temp], axis=0, ignore_index=True)
-    eda_df = pd.concat([eda_df, eda_temp], axis=0, ignore_index=True)
-    hr_df = pd.concat([hr_df, hr_temp], axis=0, ignore_index=True)
+            data[user_id][signal] = structure_modification(data[user_id][signal].copy(), signal, target_freq)
 
-    progress_bar.update(1)
-progress_bar.close()
+        progress_bar.update(1)
+    progress_bar.close()
 
-# Eliminazione dei segmenti creati che non contengono frequency * window_size valori
-bvp_df = bvp_df.groupby('segment_id').filter(lambda x: len(x) == frequency * w_size)
-eda_df = eda_df.groupby('segment_id').filter(lambda x: len(x) == frequency * w_size)
-hr_df = hr_df.groupby('segment_id').filter(lambda x: len(x) == frequency * w_size)
+    # Rimozione dei dati di EDA e ACC se non utili alla classificazione
+    for signal in necessary_signals:
+        if signal not in signals:
+            for user_id in users:
+                del data[user_id][signal]
 
-# Controllo che i segment_id dei tre dataset coincidono
-#valori_df1 = set(bvp_df.groupby('segment_id').groups.keys())
-#valori_df2 = set(eda_df.groupby('segment_id').groups.keys())
-#valori_df3 = set(hr_df.groupby('segment_id').groups.keys())
-#coincidono = valori_df1 == valori_df2 == valori_df3
+    # Ritaglio degli intervalli etichettati
+    progress_bar = tqdm(total=len(users), desc="Labeling")
+    for user_id in users:
 
-# Esportazione delle features del dataset
-print("Esportazione BVP")
-export_df(bvp_df, f'\\{dataset_name}\\bvp')
-print("Esportazione EDA")
-export_df(eda_df, f'\\{dataset_name}\\eda')
-print("Esportazione HR")
-export_df(hr_df, f'\\{dataset_name}\\hr')
-print("Esportazione Completata")
+        # Recupero dei time-stamp etichettati
+        labeled_times = data[user_id]['BVP_LABELED'].loc[data[user_id]['BVP_LABELED']['valence'].notnull(), 'time']
+        # Ritaglio dei df lasciando solo gli intervalli etichettati
+        for signal in set(signals) | set(['BVP_LABELED']):
+            data[user_id][signal]['time'] = pd.to_datetime(data[user_id][signal]['time'])
+            data[user_id][signal] = data[user_id][signal][data[user_id][signal]['time'].isin(labeled_times)]
+
+        progress_bar.update(1)
+    progress_bar.close()
+
+    # Creazione dizionario dei df totali segmentati
+    segmented_data = {}
+    for signal in set(signals) | set(['BVP_LABELED']):
+        segmented_data[signal] = pd.DataFrame()
+        
+    # Segmentazione dei df
+    progress_bar = tqdm(total=len(users), desc="Segmentation")
+    for user_id in users:
+
+        # Produzione dei segmenti
+        data_temp = {}
+        for signal in set(signals) | set(['BVP_LABELED']):
+            data_temp[signal] = segmentation(data[user_id][signal], segment_prefix=f'{df_name}_{user_id}_', w_size=w_size, w_step_size=w_step_size)
+            segmented_data[signal] = pd.concat([segmented_data[signal], data_temp[signal]], axis=0, ignore_index=True)
+
+        progress_bar.update(1)
+    progress_bar.close()
+
+    # Eliminazione dei segmenti creati che non contengono frequency * window_size valori
+    for signal in set(signals) | set(['BVP_LABELED']):
+        segmented_data[signal] = segmented_data[signal].groupby('segment_id').filter(lambda x: len(x) == target_freq * w_size)
+
+    # Controllo che i segment_id dei tre dataset coincidono
+    #valori_df1 = set(bvp_df.groupby('segment_id').groups.keys())
+    #valori_df2 = set(eda_df.groupby('segment_id').groups.keys())
+    #valori_df3 = set(hr_df.groupby('segment_id').groups.keys())
+    #coincidono = valori_df1 == valori_df2 == valori_df3
+
+    # Esportazione delle features del dataset
+    for signal in set(signals) | set(['BVP_LABELED']):
+        print(f"Esportazione {signal}...")
+        export_df(segmented_data[signal], data_directory, df_name, signal)

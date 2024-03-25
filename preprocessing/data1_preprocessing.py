@@ -2,17 +2,12 @@ from os import listdir
 from os.path import isfile, join
 import pandas as pd
 from tqdm import tqdm
-from preprocessing import structure_modification, off_body_detection, sleep_detection, segmentation, delete_off_body_and_sleep_segments, export_df, delete_random_segments
+from preprocessing_methods import structure_modification, off_body_detection, sleep_detection, segmentation, delete_off_body_and_sleep_segments, export_df, delete_random_segments, necessary_signals
 
 ####################################################################################################################
 # DATASET 1: dataset composto da 10 utenti, ognuno avente 3 registrazioni: Midterm 1, Midterm 2 e Final
 ####################################################################################################################
 
-# Nome del dataset
-dataset_name = 'data1'
-# Directory del dataset
-data_directory = f'data\{dataset_name}\\'
-# Id degli utenti
 users = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10']
 # Tipologie di dataframe
 df_types = ['Midterm 1', 'Midterm 2', 'Final']
@@ -25,37 +20,34 @@ df_types = ['Midterm 1', 'Midterm 2', 'Final']
 # Lettura dei dataset e creazione di un dizionario per ogni sensore
 # Ogni dizionario è composto da un dataset per ogni utente
 ####################################################################################################################
-def read_sensor_data():
+def read_sensor_data(data_directory, df_name, signals):
 
-    acc, bvp, eda, hr = {}, {}, {}, {}
+    data = {}
 
     progress_bar = tqdm(total=len(users), desc="Data reading")
     for user_id in users:
 
+        data[user_id] = {}
+
         for df_type in df_types:
 
-            directory = data_directory + user_id + '\\' + df_type + '\\'
+            data[user_id][df_type] = {}
 
+            directory = data_directory + df_name + '\\' + user_id + '\\' + df_type + '\\'
             file_path = [f for f in listdir(directory) if isfile(join(directory, f))]
 
-            for file in file_path:
+            for signal in set(signals) | set(necessary_signals):
+            
+                for file in file_path:
 
-                if file.endswith('ACC.csv'):
-                    acc.setdefault(user_id, {})[df_type] = pd.read_csv(join(directory, file), header=None)
-                    
-                elif file.endswith('BVP.csv'):
-                    bvp.setdefault(user_id, {})[df_type] = pd.read_csv(join(directory, file), header=None)
-
-                elif file.endswith('EDA.csv'):
-                    eda.setdefault(user_id, {})[df_type] = pd.read_csv(join(directory, file), header=None)
-
-                elif file.endswith('HR.csv'):
-                    hr.setdefault(user_id, {})[df_type] = pd.read_csv(join(directory, file), header=None)
+                    if file.endswith(f'{signal}.csv'):
+                        data[user_id][df_type][signal] = pd.read_csv(join(directory, file), header=None)
+                        break
 
         progress_bar.update(1)
     progress_bar.close()
 
-    return acc, bvp, eda, hr
+    return data
 
 
 
@@ -64,67 +56,70 @@ def read_sensor_data():
 ####################################################################################################################
 # Esecuzione del preprocessing
 ####################################################################################################################
-# Lettura del dataset
-acc, bvp, eda, hr = read_sensor_data()
+def data1_preprocessing(data_directory, df_name, signals, target_freq, w_size, w_step_size, user_max_segments): 
 
-# Dataframe di segmenti uniti
-acc_df, bvp_df, eda_df, hr_df = pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+    # Lettura del dataset
+    data = read_sensor_data(data_directory, df_name, signals)
 
-progress_bar = tqdm(total=len(users), desc="User preprocessing")
-for user_id in users:
+    # Preprocessing dei dataframe
+    progress_bar = tqdm(total=len(users), desc="User preprocessing")
+    for user_id in users:
 
-    for df_type in df_types:
+        for df_type in df_types:
 
-        # Modifica dei dataframe
-        acc[user_id][df_type] = structure_modification(acc[user_id][df_type].copy(), 'acc')
-        bvp[user_id][df_type] = structure_modification(bvp[user_id][df_type].copy(), 'bvp')
-        eda[user_id][df_type] = structure_modification(eda[user_id][df_type].copy(), 'eda')
-        hr[user_id][df_type] = structure_modification(hr[user_id][df_type].copy(), 'hr')
+            # Modifica dei dataframe
+            for signal in set(signals) | set(necessary_signals):
 
-        # Determinazione momenti di off-body e sleep
-        eda[user_id][df_type] = off_body_detection(eda[user_id][df_type])
-        eda[user_id][df_type] = sleep_detection(eda[user_id][df_type], acc[user_id][df_type])
+                data[user_id][df_type][signal] = structure_modification(data[user_id][df_type][signal].copy(), signal, target_freq)
 
-    progress_bar.update(1)
-progress_bar.close()
+            # Determinazione momenti di off-body e sleep
+            data[user_id][df_type] = off_body_detection(data[user_id][df_type], signals)
+            data[user_id][df_type] = sleep_detection(data[user_id][df_type], signals)
 
-del acc_df
+        progress_bar.update(1)
+    progress_bar.close()
 
-progress_bar = tqdm(total=len(users), desc="Segmentation")
-for user_id in users:
+    # Rimozione dei dati di EDA e ACC se non utili alla classificazione
+    for signal in necessary_signals:
+        if signal not in signals:
+            for user_id in users:
+                for df_type in df_types:
+                    del data[user_id][df_type][signal]
 
-    for df_type in df_types:
+    # Creazione dizionario dei df totali segmentati
+    segmented_data = {}
+    for signal in signals:
+        segmented_data[signal] = pd.DataFrame()
 
-        # Dataframe di segmenti temporanei per utente
-        bvp_temp, eda_df_temp, hr_temp = pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+    # Segmentazione dei df
+    progress_bar = tqdm(total=len(users), desc="Segmentation")
+    for user_id in users:
 
-        # Produzione dei segmenti
-        bvp_temp = segmentation(bvp[user_id][df_type], segment_prefix=f'{dataset_name}_{user_id}_{df_type}_')
-        eda_temp = segmentation(eda[user_id][df_type], segment_prefix=f'{dataset_name}_{user_id}_{df_type}_')
-        hr_temp = segmentation(hr[user_id][df_type], segment_prefix=f'{dataset_name}_{user_id}_{df_type}_')
+        for df_type in df_types:
 
-        # Eliminazione segmenti di off-body e sleep
-        bvp_temp, eda_temp, hr_temp = delete_off_body_and_sleep_segments(bvp_temp, eda_temp, hr_temp) 
-        
-        bvp_df = pd.concat([bvp_df, bvp_temp], axis=0, ignore_index=True)
-        eda_df = pd.concat([eda_df, eda_temp], axis=0, ignore_index=True)
-        hr_df = pd.concat([hr_df, hr_temp], axis=0, ignore_index=True)
+            # Produzione dei segmenti
+            data_temp = {}
+            for signal in signals:
+                data_temp[signal] = segmentation(data[user_id][df_type][signal], segment_prefix=f'{df_name}_{user_id}_{df_type}_', w_size=w_size, w_step_size=w_step_size)
 
-    progress_bar.update(1)
-progress_bar.close()
+            # Eliminazione segmenti di off-body e sleep
+            data_temp = delete_off_body_and_sleep_segments(data_temp, signals)
+            
+            # Concatenazione dei segmenti dell'user ai segmenti totali
+            for signal in signals:
+                segmented_data[signal] = pd.concat([segmented_data[signal], data_temp[signal]], axis=0, ignore_index=True)
 
-bvp_df = bvp_df.drop(['time'], axis=1)
-eda_df = eda_df.drop(['time','off-body', 'sleep'], axis=1)
-hr_df = hr_df.drop(['time'], axis=1)
+        progress_bar.update(1)
+    progress_bar.close()
 
-print('Cancellazione segmenti random...')
-bvp_df, eda_df, hr_df = delete_random_segments(users, dataset_name, bvp_df, eda_df, hr_df)
+    # Eliminazione colonne inutili
+    for signal in signals:
+        segmented_data[signal] = segmented_data[signal].drop(['time','off-body', 'sleep'], axis=1)
 
-# Esportazione delle features del dataset
-print("Esportazione BVP")
-export_df(bvp_df, f'\\{dataset_name}\\bvp')
-print("Esportazione EDA")
-export_df(eda_df, f'\\{dataset_name}\\eda')
-print("Esportazione HR")
-export_df(hr_df, f'\\{dataset_name}\\hr')
-print("Esportazione Completata")
+    #print('Cancellazione segmenti random...')
+    #bvp_df, eda_df, hr_df = delete_random_segments(users, df_name, bvp_df, eda_df, hr_df)
+
+    # Esportazione delle features del dataset
+    for signal in signals:
+        print(f"Esportazione {signal}...")
+        export_df(segmented_data[signal], data_directory, df_name, signal)
