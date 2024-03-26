@@ -132,7 +132,7 @@ class PositionalEncoding(nn.Module):
         super(PositionalEncoding, self).__init__()
         self.dropout = nn.Dropout(dropout)
 
-        self.pe = torch.zeros(segment_length, d_model).to(device)  # positional encoding
+        self.pe = torch.zeros(segment_length, d_model).to(device)
         position = torch.arange(0, segment_length, dtype=torch.float).unsqueeze(1).to(device)
         div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model)).to(device)
         self.pe[:, 0::2] = torch.sin(position * div_term)

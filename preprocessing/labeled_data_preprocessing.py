@@ -69,7 +69,7 @@ def read_sensor_data(data_directory, df_name, signals):
 # Esecuzione del preprocessing
 ####################################################################################################################
 # Lettura del dataset
-def labeled_data_preprocessing(data_directory, df_name, signals, target_freq, w_size, w_step_size, user_max_segments):
+def labeled_data_preprocessing(data_directory, df_name, signals, target_freq, w_size, w_step_size):
     
     # Lettura del dataset
     data = read_sensor_data(data_directory, df_name, signals)

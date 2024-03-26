@@ -2,15 +2,17 @@ from os import listdir
 from os.path import isfile, join
 import pandas as pd
 from tqdm import tqdm
-from preprocessing_methods import structure_modification, off_body_detection, sleep_detection, segmentation, delete_off_body_and_sleep_segments, export_df, necessary_signals
+from preprocessing_methods import necessary_signals, structure_modification, off_body_detection, sleep_detection, segmentation, delete_off_body_and_sleep_segments, export_df
 
 ####################################################################################################################
-# DATASET 1: dataset composto da 10 utenti, ognuno avente 3 registrazioni: Midterm 1, Midterm 2 e Final
+# DATASET 3: dataset composto da 17 utenti, ognuno avente una registrazione
 ####################################################################################################################
 
-users = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10']
-# Tipologie di dataframe
-df_types = ['Midterm 1', 'Midterm 2', 'Final']
+# Id degli utenti
+users = ['P01', 'P02', 'P03', 'P04', 'P05', 
+        'P06', 'P07', 'P08', 'P09', 'P10',
+        'P11', 'P12', 'P13', 'P14', 'P15',
+        'P16', 'P17']
 
 
 
@@ -29,20 +31,16 @@ def read_sensor_data(data_directory, df_name, signals):
 
         data[user_id] = {}
 
-        for df_type in df_types:
+        directory = data_directory + df_name + '\\' + user_id + '\\E4\\'
+        file_path = [f for f in listdir(directory) if isfile(join(directory, f))]
 
-            data[user_id][df_type] = {}
-
-            directory = data_directory + df_name + '\\' + user_id + '\\' + df_type + '\\'
-            file_path = [f for f in listdir(directory) if isfile(join(directory, f))]
-
-            for signal in set(signals) | set(necessary_signals):
+        for signal in set(signals) | set(necessary_signals):
             
-                for file in file_path:
+            for file in file_path:
 
-                    if file.endswith(f'{signal}.csv'):
-                        data[user_id][df_type][signal] = pd.read_csv(join(directory, file), header=None)
-                        break
+                if file.endswith(f'{signal}.csv'):
+                    data[user_id][signal] = pd.read_csv(join(directory, file), header=None)
+                    break
 
         progress_bar.update(1)
     progress_bar.close()
@@ -53,11 +51,20 @@ def read_sensor_data(data_directory, df_name, signals):
 
 
 
+
+
+
+
+
+
+
+
 ####################################################################################################################
 # Esecuzione del preprocessing
 ####################################################################################################################
-def data1_preprocessing(data_directory, df_name, signals, target_freq, w_size, w_step_size): 
-
+# Lettura del dataset
+def data3_preprocessing(data_directory, df_name, signals, target_freq, w_size, w_step_size):
+    
     # Lettura del dataset
     data = read_sensor_data(data_directory, df_name, signals)
 
@@ -65,16 +72,14 @@ def data1_preprocessing(data_directory, df_name, signals, target_freq, w_size, w
     progress_bar = tqdm(total=len(users), desc="User preprocessing")
     for user_id in users:
 
-        for df_type in df_types:
+        # Modifica dei dataframe
+        for signal in set(signals) | set(necessary_signals):
 
-            # Modifica dei dataframe
-            for signal in set(signals) | set(necessary_signals):
+            data[user_id][signal] = structure_modification(data[user_id][signal].copy(), signal, target_freq)
 
-                data[user_id][df_type][signal] = structure_modification(data[user_id][df_type][signal].copy(), signal, target_freq)
-
-            # Determinazione momenti di off-body e sleep
-            data[user_id][df_type] = off_body_detection(data[user_id][df_type], signals)
-            data[user_id][df_type] = sleep_detection(data[user_id][df_type], signals)
+        # Determinazione momenti di off-body e sleep
+        data[user_id] = off_body_detection(data[user_id], signals)
+        data[user_id] = sleep_detection(data[user_id], signals)
 
         progress_bar.update(1)
     progress_bar.close()
@@ -83,8 +88,7 @@ def data1_preprocessing(data_directory, df_name, signals, target_freq, w_size, w
     for signal in necessary_signals:
         if signal not in signals:
             for user_id in users:
-                for df_type in df_types:
-                    del data[user_id][df_type][signal]
+                del data[user_id][signal]
 
     # Creazione dizionario dei df totali segmentati
     segmented_data = {}
@@ -95,19 +99,17 @@ def data1_preprocessing(data_directory, df_name, signals, target_freq, w_size, w
     progress_bar = tqdm(total=len(users), desc="Segmentation")
     for user_id in users:
 
-        for df_type in df_types:
+        # Produzione dei segmenti
+        data_temp = {}
+        for signal in signals:
+            data_temp[signal] = segmentation(data[user_id][signal], segment_prefix=f'{df_name}_{user_id}_', w_size=w_size, w_step_size=w_step_size)
 
-            # Produzione dei segmenti
-            data_temp = {}
-            for signal in signals:
-                data_temp[signal] = segmentation(data[user_id][df_type][signal], segment_prefix=f'{df_name}_{user_id}_{df_type}_', w_size=w_size, w_step_size=w_step_size)
-
-            # Eliminazione segmenti di off-body e sleep
-            data_temp = delete_off_body_and_sleep_segments(data_temp, signals)
-            
-            # Concatenazione dei segmenti dell'user ai segmenti totali
-            for signal in signals:
-                segmented_data[signal] = pd.concat([segmented_data[signal], data_temp[signal]], axis=0, ignore_index=True)
+        # Eliminazione segmenti di off-body e sleep
+        data_temp = delete_off_body_and_sleep_segments(data_temp, signals)
+        
+        # Concatenazione dei segmenti dell'user ai segmenti totali
+        for signal in signals:
+            segmented_data[signal] = pd.concat([segmented_data[signal], data_temp[signal]], axis=0, ignore_index=True)
 
         progress_bar.update(1)
     progress_bar.close()

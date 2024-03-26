@@ -10,12 +10,21 @@ user_max_segments = 500 # Numero massimo di segmenti per utente
 
 from data1_preprocessing import data1_preprocessing
 from data2_preprocessing import data2_preprocessing
+from data3_preprocessing import data3_preprocessing
+from data4_preprocessing import data4_preprocessing
+from data5_preprocessing import data5_preprocessing
 from labeled_data_preprocessing import labeled_data_preprocessing
 from merge_and_normalization import normalization
 
-#data1_preprocessing(data_directory=data_directory, df_name='data1', signals=signals, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size, user_max_segments=user_max_segments)
-data2_preprocessing(data_directory=data_directory, df_name='data2', signals=signals, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size, user_max_segments=user_max_segments)
+# Preprocessing dei dataset non etichettati
+#data1_preprocessing(data_directory=data_directory, df_name='data1', signals=signals, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size)
+#data2_preprocessing(data_directory=data_directory, df_name='data2', signals=signals, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size)
+#data3_preprocessing(data_directory=data_directory, df_name='data3', signals=signals, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size)
+#data4_preprocessing(data_directory=data_directory, df_name='data4', signals=signals, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size)
+data5_preprocessing(data_directory=data_directory, df_name='data5', signals=signals, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size)
 
-#labeled_data_preprocessing(data_directory=data_directory, df_name='labeled_data', signals=labeled_signals, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size, user_max_segments=user_max_segments)
+# Preprocessing dei dataset etichettati
+#labeled_data_preprocessing(data_directory=data_directory, df_name='labeled_data', signals=labeled_signals, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size)
 
+#normalization(data_directory, df_names, signals, labeled=True)
 #normalization(data_directory, labeled_df_names, signals, labeled=True)
