@@ -1,5 +1,6 @@
 import pandas as pd
 
+# Colonne da normalizzare per ogni segnale
 cols_to_normalize = {
     'ACC': ['x', 'y', 'z'],
     'BVP': ['bvp'],

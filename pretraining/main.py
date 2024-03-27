@@ -5,12 +5,13 @@ from transformer import TSTransformer
 from utils import data_split
 import torch
 import csv
+import time
 from datetime import datetime
 from data_preparation import load_data, prepare_data, my_collate_fn
 from training_methods import train_model, validate_model, early_stopping, try_model
 from graphs_methods import losses_graph
 
-data_path = {'bvp': 'processed_data/bvp.csv', 'eda': 'processed_data/eda.csv', 'hr': 'processed_data/hr.csv'} # Percorsi dei dati
+data_path = {'bvp': 'processed_data/BVP.csv', 'eda': 'processed_data/EDA.csv', 'hr': 'processed_data/HR.csv'} # Percorsi dei dati
 signals = ['bvp', 'eda', 'hr'] # Segnali considerati
 num_signals = len(signals) # Numero dei segnali
 segment_length = 240 # Lunghezza dei segmenti in time steps
@@ -20,11 +21,11 @@ train_data_ratio = 0.85 # Proporzione dati per la validazione sul totale
 iperparametri = {
     'batch_size' : 256, # Dimensione di un batch di dati (in numero di segmenti)
     'masking_ratio' : 0.15, # Rapporto di valori mascherati
-    'lm' : 12, # Media della lunghezza delle sequenze mascherate
+    'lm' : 12, # Lunghezza delle sequenze mascherate all'interno di una singola maschera
     'd_model' : 128, #
     'dropout' : 0.1, #
-    'num_heads' : 2, # 
-    'num_layers' : 3 # Numero di layer dell'encoder
+    'num_heads' : 4, # Numero di teste del modulo di auto-attenzione 
+    'num_layers' : 6 # Numero di layer dell'encoder
 }
 
 # MAIN
@@ -80,6 +81,7 @@ scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.3, patience=10, th
 num_epochs = 10
 val_losses = []
 epoch_info = {'train_losses': [], 'val_losses': []}
+start_time = time.time()
 
 for epoch in range(num_epochs):
     
@@ -106,7 +108,10 @@ for epoch in range(num_epochs):
     # Aggiorna lo scheduler della velocità di apprendimento in base alla loss di validazione
     scheduler.step(val_loss)
 
-    #try_model(model, val_dataloader, num_signals, segment_length, iperparametri, device)
+    try_model(model, val_dataloader, num_signals, segment_length, iperparametri, device)
+
+end_time = time.time()
+elapsed_time = end_time - start_time
 
 # Salvataggio delle loss su file
 print('Salvataggio informazioni training su file...')
@@ -120,6 +125,10 @@ with open(csv_filename, mode='w', newline='') as file:
     writer.writerow(["Epoch", "Train Loss", "Val Loss"])
     for epoch, (train_loss, val_loss) in enumerate(zip(epoch_info['train_losses'], epoch_info['val_losses']), start=1):
         writer.writerow([epoch, train_loss, val_loss])
+    writer.writerow(["Numero epoche", num_epochs])
+    writer.writerow(["Tempo tot", elapsed_time])
+    writer.writerow(["Tempo per epoca", elapsed_time / num_epochs])
+
 
 # Stampa grafico delle loss
 losses_graph(epoch_info, save_path=f'graphs\\losses_plot_{formatted_datetime}.png')

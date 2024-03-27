@@ -9,10 +9,6 @@ from preprocessing_methods import necessary_signals, structure_modification, off
 # In ogni data possono esserci più registrazioni della stessa persona.
 ####################################################################################################################
 
-# Nome del dataset
-dataset_name = 'data2'
-# Directory del dataset
-data_directory = f'data\{dataset_name}\\'
 # Id degli utenti
 days = ['20190902', '20190903', '20190904', '20190905', '20190906',
          '20190909', '20190910', '20190911', '20190912', '20190913',

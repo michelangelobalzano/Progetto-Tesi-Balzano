@@ -108,6 +108,7 @@ def early_stopping(val_losses, patience=10):
 
     return True
 
+# Prova del modello con stampa del grafico delle previsioni del primo segmento del primo batch
 def try_model(model, dataloader, num_signals, segment_length, iperparametri, device):
     with torch.no_grad():
         first_batch = next(iter(dataloader))

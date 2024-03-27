@@ -3,8 +3,8 @@ import torch
 import torch.nn as nn
 import numpy as np
 
-
-def losses_graph(epoch_info, path):
+ 
+def losses_graph(epoch_info, save_path):
 
     # Plot delle curve di loss di training e validazione
     plt.plot(epoch_info['train_losses'], label='Train Loss')
@@ -16,7 +16,7 @@ def losses_graph(epoch_info, path):
     plt.legend()
 
     # Salvataggio grafico
-    plt.savefig(path)
+    plt.savefig(save_path)
 
     # Mostra il grafico
     plt.show()

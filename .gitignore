@@ -162,6 +162,9 @@ cython_debug/
 # Esclusione dei raw data
 data/
 
+# Esclusione dei dati processati
+processed_data/
+
 # Esclusione file e cartelle ambiente virtuale preprocessing
 preprocessing/pyvenv.cfg
 preprocessing/Scripts/
