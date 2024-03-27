@@ -1,47 +1,26 @@
-import os
 from os.path import join
 import pandas as pd
+import os
+from collections import defaultdict
 from tqdm import tqdm
-from preprocessing_methods import necessary_signals, structure_modification, off_body_detection, sleep_detection, segmentation, delete_off_body_and_sleep_segments, export_df
+from preprocessing_methods import necessary_signals, structure_modification, off_body_detection, sleep_detection, segmentation, delete_off_body_and_sleep_segments, export_df, delete_random_segments
 
 ####################################################################################################################
-# DATASET 2: dataset composto da 27 utenti e registrazioni suddivise per data. 
-# In ogni data possono esserci più registrazioni della stessa persona.
+# DATASET 8: dataset composto da 11 utenti con un numero di registrazioni differente per ognuno
 ####################################################################################################################
 
 # Id degli utenti
-days = ['20190902', '20190903', '20190904', '20190905', '20190906',
-         '20190909', '20190910', '20190911', '20190912', '20190913',
-         '20191028', '20191029', '20191030', '20191031', '20191101',
-         '20191118', '20191119', '20191120', '20191121', '20191122']
+users = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10', 'S11']
 min_seconds = 600 # (10 minuti) tempo minimo di registrazioni valide
-
-
-
-
-def get_users(data_directory, df_name):
-
-    users = set()
-    for day in days:
-        directory = data_directory + df_name + '\\' + day + '\\'
-        for user_directory in os.listdir(directory):
-            user_id = user_directory.split('_')[1]
-            users.add(user_id)
-
-    return list(users)
-
 
 
 ####################################################################################################################
 # Lettura dei dataset e creazione di un dizionario per ogni sensore
-# Ogni dizionario è composto da una lista di dataset per ogni utente
+# Ogni dizionario è composto da un dataset per ogni utente
 ####################################################################################################################
 def read_sensor_data(data_directory, df_name, signals):
 
     data = {}
-    
-    # Determinazione della lista degli utenti
-    users = get_users(data_directory, df_name)
 
     # Creazione struttura dati
     for user_id in users:
@@ -49,16 +28,14 @@ def read_sensor_data(data_directory, df_name, signals):
         for signal in set(signals) | set(necessary_signals):
             data[user_id][signal] = []
 
-    progress_bar = tqdm(total=len(days), desc="Data reading")
-    for day in days:
+    progress_bar = tqdm(total=len(users), desc="Data reading")
+    for user_id in users:
 
-        directory = data_directory + df_name + '\\' + day + '\\'
+        directory = data_directory + df_name + '\\' + user_id + '\\'
 
-        for user_directory in os.listdir(directory):
+        for reg_directory in os.listdir(directory):
 
-            user_id = user_directory.split('_')[1]
-
-            file_path = os.path.join(directory, user_directory)
+            file_path = os.path.join(directory, reg_directory)
             files = [f for f in os.listdir(file_path) if os.path.isfile(join(file_path, f))]
 
             # Considero validi i df che abbiano almeno 10 minuti di registrazione
@@ -81,7 +58,12 @@ def read_sensor_data(data_directory, df_name, signals):
         progress_bar.update(1)
     progress_bar.close()
 
-    return data, users
+    return data
+
+
+
+
+
 
 
 
@@ -95,10 +77,10 @@ def read_sensor_data(data_directory, df_name, signals):
 ####################################################################################################################
 # Esecuzione del preprocessing
 ####################################################################################################################
-def data2_preprocessing(data_directory, df_name, signals, target_freq, w_size, w_step_size):
+def data8_preprocessing(data_directory, df_name, signals, target_freq, w_size, w_step_size):
     
-    # Lettura del dataset e della lista degli utenti
-    data, users = read_sensor_data(data_directory, df_name, signals)
+    # Lettura del dataset
+    data = read_sensor_data(data_directory, df_name, signals)
 
     # Preprocessing dei dataframe
     progress_bar = tqdm(total=len(users), desc="User preprocessing")
@@ -137,7 +119,7 @@ def data2_preprocessing(data_directory, df_name, signals, target_freq, w_size, w
     # Segmentazione dei df
     progress_bar = tqdm(total=len(users), desc="Segmentation")
     for user_id in users:
-    
+
         dim = len(data[user_id][signals[0]])
         for i in range(dim):
 

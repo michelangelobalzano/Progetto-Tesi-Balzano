@@ -13,6 +13,10 @@ from data2_preprocessing import data2_preprocessing
 from data3_preprocessing import data3_preprocessing
 from data4_preprocessing import data4_preprocessing
 from data5_preprocessing import data5_preprocessing
+from data6_preprocessing import data6_preprocessing
+from data7_preprocessing import data7_preprocessing
+from data8_preprocessing import data8_preprocessing
+from data9_preprocessing import data9_preprocessing
 from labeled_data_preprocessing import labeled_data_preprocessing
 from merge_and_normalization import normalization
 
@@ -21,7 +25,11 @@ from merge_and_normalization import normalization
 #data2_preprocessing(data_directory=data_directory, df_name='data2', signals=signals, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size)
 #data3_preprocessing(data_directory=data_directory, df_name='data3', signals=signals, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size)
 #data4_preprocessing(data_directory=data_directory, df_name='data4', signals=signals, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size)
-data5_preprocessing(data_directory=data_directory, df_name='data5', signals=signals, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size)
+#data5_preprocessing(data_directory=data_directory, df_name='data5', signals=signals, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size)
+#data6_preprocessing(data_directory=data_directory, df_name='data6', signals=signals, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size)
+#data7_preprocessing(data_directory=data_directory, df_name='data7', signals=signals, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size)
+data8_preprocessing(data_directory=data_directory, df_name='data8', signals=signals, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size)
+#data9_preprocessing(data_directory=data_directory, df_name='data9', signals=signals, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size)
 
 # Preprocessing dei dataset etichettati
 #labeled_data_preprocessing(data_directory=data_directory, df_name='labeled_data', signals=labeled_signals, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size)
