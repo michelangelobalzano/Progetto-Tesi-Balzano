@@ -127,9 +127,15 @@ def labeled_data_preprocessing(data_directory, df_name, signals, target_freq, w_
         segmented_data[signal] = segmented_data[signal].groupby('segment_id').filter(lambda x: len(x) == target_freq * w_size)
 
     # Applicazione delle etichette di maggioranza ad ogni segmento
+    label_df = pd.DataFrame(columns=['segment_id', 'valence', 'arousal'])
     for segment_id, segment in segmented_data['BVP_LABELED'].groupby('segment_id'):
-        segment['valence'] = segment['valence'].mode().iloc[0]
-        segment['arousal'] = segment['arousal'].mode().iloc[0]
+        row = {
+            'segment_id': segment_id,
+            'valence': segment['valence'].mode().iloc[0],
+            'arousal': segment['arousal'].mode().iloc[0]
+        }
+        row_df = pd.DataFrame([row])
+        label_df = pd.concat([label_df, row_df], ignore_index=True)
 
     # Controllo che i segment_id dei tre dataset coincidono
     #valori_df1 = set(bvp_df.groupby('segment_id').groups.keys())
@@ -140,7 +146,7 @@ def labeled_data_preprocessing(data_directory, df_name, signals, target_freq, w_
     # Eliminazione colonne inutili
     for signal in signals:
         segmented_data[signal] = segmented_data[signal].drop(['time'], axis=1)
-    segmented_data['BVP_LABELED'] = segmented_data['BVP_LABELED'].drop(['time'], axis=1)
+    segmented_data['BVP_LABELED'] = segmented_data['BVP_LABELED'].drop(['time', 'valence', 'arousal'], axis=1)
 
     # Esportazione delle features del dataset
     for signal in signals:
@@ -148,4 +154,6 @@ def labeled_data_preprocessing(data_directory, df_name, signals, target_freq, w_
         export_df(segmented_data[signal], data_directory, df_name, signal)
     print(f"Esportazione BVP...")
     export_df(segmented_data['BVP_LABELED'], data_directory, df_name, 'BVP')
+    print(f"Esportazione etichette...")
+    export_df(label_df, data_directory, df_name, 'LABELS')
     
