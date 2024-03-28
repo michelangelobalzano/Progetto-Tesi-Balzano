@@ -197,31 +197,64 @@ class TSTransformer(nn.Module):
         self.dropout1 = nn.Dropout(self.dropout)
         
     def forward(self, data):
-        # Dimensione data: [batch_size, num_signals, segment_length]
 
-        inp = data.permute(2, 0, 1) # [seq_length, batch_size, feat_dim]
-
+        # Dimensione data input: [batch_size, num_signals, segment_length]
+        inp = data.permute(2, 0, 1) # [segment_length, batch_size, num_signals]
         # Moltiplicazione per la redice quadrata di d_model per scalare l'input
-        # come descritto nel paper "Attention is All You Need".
+        # come descritto nel paper "Attention is All You Need"
         inp = self.project_inp(inp) * math.sqrt(self.d_model)
-        
-        # Aggiunta del positional encoding
-        inp = self.pos_enc(inp)
-
-        # Layer di encoder
-        output = self.transformer_encoder(inp)  # [segment_length, batch_size, d_model]
-        
-        # Funzione di attivazione
-        output = self.act(output)
-        
+        inp = self.pos_enc(inp) # Aggiunta del positional encoding
+        output = self.transformer_encoder(inp) # Layer di encoder
+        # [segment_length, batch_size, d_model]
+        output = self.act(output) # Funzione di attivazione
         output = output.permute(1, 0, 2)  # [batch_size, segment_length, d_model]
-
-        # Dropout
-        output = self.dropout1(output)
-
-        # Layer di output
-        output = self.output_layer(output)  # [batch_size, segment_length, num_signals]
-
+        output = self.dropout1(output) # Dropout
+        output = self.output_layer(output) # Layer di output
+        # [batch_size, segment_length, num_signals]
         output = output.permute(0, 2, 1) # [batch_size, num_signals, segment_length]
 
-        return output
+        return output # [batch_size, num_signals, segment_length]
+
+class TSTransformerClassifier(nn.Module):
+    def __init__(self, num_signals, segment_length, iperparametri, num_classes, device):
+        super(TSTransformerClassifier, self).__init__()
+
+        self.num_signals = num_signals
+        self.segment_length = segment_length
+        self.d_model = iperparametri['d_model']
+        self.dropout = iperparametri['dropout']
+        self.num_layers = iperparametri['num_layers']
+        self.num_heads = iperparametri['num_heads']
+        self.device = device
+
+        self.project_inp = nn.Linear(self.num_signals, self.d_model)
+        self.pos_enc = PositionalEncoding(segment_length, self.d_model, self.dropout, self.device)
+        encoder_layer = MyEncoderLayer(self.d_model, self.num_heads, self.d_model, self.dropout)
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, self.num_layers)
+        self.act = F.gelu
+        self.dropout1 = nn.Dropout(self.dropout)
+
+        self.num_classes = num_classes
+        self.output_layer = self.build_output_module(self.d_model, self.segment_length, self.num_classes)
+
+    def build_output_module(self, d_model, segment_length, num_classes):
+        output_layer = nn.Linear(d_model * segment_length, num_classes)
+        return output_layer
+
+    def forward(self, X):
+
+        # Dimensione data input: [batch_size, num_signals, segment_length]
+        inp = X.permute(2, 0, 1) # [segment_length, batch_size, num_signals]
+        # Moltiplicazione per la redice quadrata di d_model per scalare l'input
+        # come descritto nel paper "Attention is All You Need"
+        inp = self.project_inp(inp) * math.sqrt(self.d_model)
+        inp = self.pos_enc(inp) # Aggiunta del positional encoding
+        output = self.transformer_encoder(inp) # Layer di encoder
+        # [segment_length, batch_size, d_model]
+        output = self.act(output) # Funzione di attivazione
+        output = output.permute(1, 0, 2)  # [batch_size, segment_length, d_model]
+        output = self.dropout1(output) # Dropout
+        output = output.reshape(output.shape[0], -1) # [batch_size, segment_length * d_model]
+        output = self.output_layer(output)  # Layer di output
+        
+        return output # [batch_size, num_classes]
