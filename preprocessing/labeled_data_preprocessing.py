@@ -136,6 +136,11 @@ def labeled_data_preprocessing(data_directory, df_name, signals, target_freq, w_
     #valori_df2 = set(eda_df.groupby('segment_id').groups.keys())
     #valori_df3 = set(hr_df.groupby('segment_id').groups.keys())
     #coincidono = valori_df1 == valori_df2 == valori_df3
+        
+    # Eliminazione colonne inutili
+    for signal in signals:
+        segmented_data[signal] = segmented_data[signal].drop(['time'], axis=1)
+    segmented_data['BVP_LABELED'] = segmented_data['BVP_LABELED'].drop(['time'], axis=1)
 
     # Esportazione delle features del dataset
     for signal in signals:

@@ -177,3 +177,6 @@ pretraining/Scripts/
 pretraining/Include
 pretraining/Lib
 pretraining/share
+
+# Esclusione cartella salvataggio modelli
+pretraining/models

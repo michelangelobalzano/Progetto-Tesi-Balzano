@@ -1,19 +1,6 @@
-from sklearn.model_selection import train_test_split
 import torch
 import random
 
-# Suddivisione dei segmenti in train e val
-def data_split(data, split_ratio, signals):
-    segment_ids = data['bvp']['segment_id'].unique()
-    train_segment_ids, val_segment_ids = train_test_split(segment_ids, train_size=split_ratio, random_state=42)
-
-    train_data = {}
-    val_data = {}
-    for signal in signals:
-        train_data[signal] = data[signal][data[signal]['segment_id'].isin(train_segment_ids)].reset_index(drop=True)
-        val_data[signal] = data[signal][data[signal]['segment_id'].isin(val_segment_ids)].reset_index(drop=True)
-
-    return train_data, val_data
 '''
 # Generazione di una maschera per ogni segnale e segmento
 def generate_masks(batch_size, masking_ratio, lm, num_signals, segment_length, device):

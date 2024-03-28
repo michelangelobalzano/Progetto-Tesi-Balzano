@@ -28,11 +28,11 @@ from merge_and_normalization import normalization
 #data5_preprocessing(data_directory=data_directory, df_name='data5', signals=signals, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size)
 #data6_preprocessing(data_directory=data_directory, df_name='data6', signals=signals, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size)
 #data7_preprocessing(data_directory=data_directory, df_name='data7', signals=signals, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size)
-data8_preprocessing(data_directory=data_directory, df_name='data8', signals=signals, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size)
+#data8_preprocessing(data_directory=data_directory, df_name='data8', signals=signals, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size)
 #data9_preprocessing(data_directory=data_directory, df_name='data9', signals=signals, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size)
 
 # Preprocessing dei dataset etichettati
-#labeled_data_preprocessing(data_directory=data_directory, df_name='labeled_data', signals=labeled_signals, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size)
+labeled_data_preprocessing(data_directory=data_directory, df_name='labeled_data', signals=labeled_signals, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size)
 
-#normalization(data_directory, df_names, signals, labeled=True)
-#normalization(data_directory, labeled_df_names, signals, labeled=True)
+#normalization(data_directory, ['data1'], signals, labeled=False)
+normalization(data_directory, labeled_df_names, signals, labeled=True)
