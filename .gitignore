@@ -161,6 +161,7 @@ cython_debug/
 
 # Esclusione dei raw data
 data/
+data2/
 
 # Esclusione dei dati processati
 processed_data/

@@ -1,29 +1,23 @@
+import os
 from os.path import join
 import pandas as pd
-import os
 from tqdm import tqdm
 from preprocessing_methods import necessary_signals, structure_modification, off_body_detection, sleep_detection, segmentation, delete_off_body_and_sleep_segments, export_df
 
-####################################################################################################################
-# DATASET 5: dataset composto da 15 utenti con un numero di registrazioni differente per ognuno
-####################################################################################################################
+def get_users(data_directory):
 
-# Nome del dataset
-dataset_name = 'data5'
-# Directory del dataset
-data_directory = f'data\{dataset_name}\\'
-# Id degli utenti
-users = ['5C', '6B', '6D', '7A', '7E', '8B', '15', '83', '94', 'BG', 'CE', 'DF', 'E4', 'EG', 'F5']
-min_seconds = 600 # (10 minuti) tempo minimo di registrazioni valide
+    users = set()
+    for user_directory in os.listdir(data_directory):
+        if os.path.isdir(os.path.join(data_directory, user_directory)):
+            user_id = user_directory
+            users.add(user_id)
 
+    return list(users)
 
-####################################################################################################################
-# Lettura dei dataset e creazione di un dizionario per ogni sensore
-# Ogni dizionario è composto da un dataset per ogni utente
-####################################################################################################################
-def read_sensor_data(data_directory, df_name, signals):
+def read_sensor_data(data_directory, users, signals, min_seconds):
 
     data = {}
+
     # Creazione struttura dati
     for user_id in users:
         data[user_id] = {}
@@ -31,69 +25,63 @@ def read_sensor_data(data_directory, df_name, signals):
             data[user_id][signal] = []
 
     progress_bar = tqdm(total=len(users), desc="Data reading")
-    for user_id in users:
+    for user_directory in os.listdir(data_directory):
 
-        directory = data_directory + df_name + '\\' + user_id + '\\'
+        if os.path.isdir(os.path.join(data_directory, user_directory)):
+            user_directory_path = os.path.join(data_directory, user_directory)
+            user_id = user_directory
 
-        for reg_directory in os.listdir(directory):
+            for reg_directory in os.listdir(user_directory_path):
 
-            file_path = os.path.join(directory, reg_directory)
-            files = [f for f in os.listdir(file_path) if os.path.isfile(join(file_path, f))]
+                reg_directory_path = os.path.join(user_directory_path, reg_directory)
+                files = [f for f in os.listdir(reg_directory_path) if os.path.isfile(join(reg_directory_path, f))]
 
-            # Considero validi i df che abbiano almeno 10 minuti di registrazione
-            # Prendo i file TEMP per il calcolo (4 Hz)
-            valid = True
-            for file in files:
-                if(file.endswith('TEMP.csv') and  (len(pd.read_csv(os.path.join(file_path, file), header=None)) < min_seconds * 4)):
+                # Considero validi i df che abbiano almeno 10 minuti di registrazione
+                # Prendo i file TEMP per il calcolo (4 Hz)
+                valid = True
+                for file in files:
+                    if(file.endswith('TEMP.csv') and (len(pd.read_csv(os.path.join(reg_directory_path, file), header=None)) < min_seconds * 4)):
+                        valid = False
+                        break
 
-                    valid = False
-                    break
+                # Lettura dei df validi
+                if(valid):
+                    for signal in set(signals) | set(necessary_signals):
+                        for file in files:
+                            if file.endswith(f'{signal}.csv'):
+                                data[user_id][signal].append(pd.read_csv(os.path.join(reg_directory_path, file), header=None))
+                                break
 
-            # Lettura dei df validi
-            if(valid):
-                for signal in set(signals) | set(necessary_signals):
-                    for file in files:
-                        
-                        if file.endswith(f'{signal}.csv'):
-                            data[user_id][signal].append(pd.read_csv(os.path.join(file_path, file), header=None))
-                            break
-
-        progress_bar.update(1)
+            progress_bar.update(1)
     progress_bar.close()
 
     return data
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 ####################################################################################################################
 # Esecuzione del preprocessing
 ####################################################################################################################
-def data5_preprocessing(data_directory, df_name, signals, target_freq, w_size, w_step_size):
+def preprocessing(data_directory, df_name, signals, min_seconds, target_freq, w_size, w_step_size):
+    
+    users = get_users(data_directory)
+    print(users)
+    # Lettura del dataset e della lista degli utenti
+    data = read_sensor_data(data_directory, users, signals, min_seconds)
 
-    # Lettura del dataset
-    data = read_sensor_data(data_directory, df_name, signals)
-
-    progress_bar = tqdm(total=len(users), desc="User preprocessing")
+    # Preprocessing dei dataframe
+    progress_bar = tqdm(total=len(users), desc="Df modification")
     for user_id in users:
-
         dim = len(data[user_id][signals[0]])
         for i in range(dim):
-
             # Modifica dei dataframe
             for signal in set(signals) | set(necessary_signals):
                 data[user_id][signal][i] = structure_modification(data[user_id][signal][i].copy(), signal, target_freq)
+        progress_bar.update(1)
+    progress_bar.close()
 
+    progress_bar = tqdm(total=len(users), desc="Off-body and sleep detection")
+    for user_id in users:
+        dim = len(data[user_id][signals[0]])
+        for i in range(dim):
             # Determinazione momenti di off-body e sleep
             data_temp = {}
             for signal in set(signals) | set(necessary_signals):
@@ -120,14 +108,13 @@ def data5_preprocessing(data_directory, df_name, signals, target_freq, w_size, w
     # Segmentazione dei df
     progress_bar = tqdm(total=len(users), desc="Segmentation")
     for user_id in users:
-
+    
         dim = len(data[user_id][signals[0]])
         for i in range(dim):
-
             # Produzione dei segmenti
             data_temp = {}
             for signal in signals:
-                data_temp[signal] = segmentation(data[user_id][signal][i], segment_prefix=f'{df_name}_{user_id}_{i}_', w_size=w_size, w_step_size=w_step_size)
+                data_temp[signal] = segmentation(data[user_id][signal][i], segment_prefix=f'{df_name}{user_id}{i}', w_size=w_size, w_step_size=w_step_size)
 
             # Eliminazione segmenti di off-body e sleep
             data_temp = delete_off_body_and_sleep_segments(data_temp, signals)
@@ -146,4 +133,4 @@ def data5_preprocessing(data_directory, df_name, signals, target_freq, w_size, w
    # Esportazione delle features del dataset
     for signal in signals:
         print(f"Esportazione {signal}...")
-        export_df(segmented_data[signal], data_directory, df_name, signal)
+        export_df(segmented_data[signal], data_directory, signal)

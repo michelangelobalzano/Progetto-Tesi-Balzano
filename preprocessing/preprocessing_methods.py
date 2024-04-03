@@ -8,6 +8,7 @@ df_cols = {'ACC': ['x', 'y', 'z'], 'BVP': ['bvp'], 'EDA': ['eda'], 'HR': ['hr']}
 # EDA serve per la determinazione dei momenti di off-body
 # Bisogna considerarli anche se non servono per la classificazione
 necessary_signals = ['ACC', 'EDA']
+precision = {'ACC': 0, 'BVP': 2, 'EDA': 6, 'HR': 2} # Numero di cifre decimali
 
 ####################################################################################################################
 # Modifica della struttura dei dataset:
@@ -35,6 +36,9 @@ def structure_modification(df, signal, target_freq):
         df = resampling(df, target_freq)
     else:
         df = interpolazione(df, target_freq)
+
+    for col in cols:
+        df[col] = df[col].round(precision[signal])
 
     return df
 
@@ -191,7 +195,7 @@ def segmentation(df, segment_prefix, w_size, w_step_size):
         end_timestamp = start_timestamp + timedelta(seconds=w_size)
 
         segment = df[(df['time'] >= start_timestamp) & (df['time'] < end_timestamp)].copy()
-        segment['segment_id'] = f'{segment_prefix}{segment_number}'
+        segment['segment_id'] = int(f'{segment_prefix}{segment_number}')
         segments.append(segment)
 
         start_timestamp += timedelta(seconds=w_step_size)
@@ -242,12 +246,12 @@ def delete_off_body_and_sleep_segments(data, signals):
 ####################################################################################################################
 # Esportazione del dataframe finale
 ####################################################################################################################
-def export_df(df, output_dir, df_name, signal):
+def export_df(df, output_dir, signal):
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    df.to_csv(f'{output_dir}{df_name}\\{signal}.csv', index=False)
+    df.to_csv(f'{output_dir}\\{signal}.csv', index=False)
 
 
 
