@@ -115,15 +115,22 @@ def labeled_data_preprocessing(data_directory, df_name, signals, target_freq, w_
         segmented_data[signal] = segmented_data[signal].groupby('segment_id').filter(lambda x: len(x) == target_freq * w_size)
 
     # Applicazione delle etichette di maggioranza ad ogni segmento
-    label_df = pd.DataFrame(columns=['segment_id', 'valence', 'arousal'])
+    valence_df = pd.DataFrame(columns=['segment_id', 'valence'])
+    arousal_df = pd.DataFrame(columns=['segment_id', 'arousal'])
+
     for segment_id, segment in segmented_data['BVP_LABELED'].groupby('segment_id'):
-        row = {
+        valence_row = {
             'segment_id': segment_id,
-            'valence': segment['valence'].mode().iloc[0],
+            'valence': segment['valence'].mode().iloc[0]
+        }
+        arousal_row = {
+            'segment_id': segment_id,
             'arousal': segment['arousal'].mode().iloc[0]
         }
-        row_df = pd.DataFrame([row])
-        label_df = pd.concat([label_df, row_df], ignore_index=True)
+        valence_row_df = pd.DataFrame([valence_row])
+        arousal_row_df = pd.DataFrame([arousal_row])
+        valence_df = pd.concat([valence_df, valence_row_df], ignore_index=True)
+        arousal_df = pd.concat([arousal_df, arousal_row_df], ignore_index=True)
 
     # Controllo che i segment_id dei tre dataset coincidono
     #valori_df1 = set(bvp_df.groupby('segment_id').groups.keys())
@@ -143,5 +150,6 @@ def labeled_data_preprocessing(data_directory, df_name, signals, target_freq, w_
     print(f"Esportazione BVP...")
     export_df(segmented_data['BVP_LABELED'], data_directory, 'BVP')
     print(f"Esportazione etichette...")
-    export_df(label_df, data_directory, 'LABELS')
+    export_df(valence_df, data_directory, 'VALENCE')
+    export_df(arousal_df, data_directory, 'AROUSAL')
     

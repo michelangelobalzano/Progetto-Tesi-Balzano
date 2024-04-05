@@ -18,7 +18,7 @@ from merge_and_normalization import merge_and_normalize
 #    preprocessing(data_directory=data_directory+data+'\\', df_name=data, signals=signals, min_seconds=min_seconds, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size)
 
 # Preprocessing dei dataset etichettati
-#labeled_data_preprocessing(data_directory=data_directory+labeled_df_name+'\\', df_name=labeled_df_name, signals=labeled_signals, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size)
+labeled_data_preprocessing(data_directory=data_directory+labeled_df_name+'\\', df_name=labeled_df_name, signals=labeled_signals, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size)
 
 #merge_and_normalize(data_directory, ['1', '3', '4'], signals, user_max_segments=user_max_segments, labeled=False)
 merge_and_normalize(data_directory, [labeled_df_name], signals, user_max_segments, labeled=True)

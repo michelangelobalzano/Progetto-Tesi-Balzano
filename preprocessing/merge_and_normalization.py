@@ -29,7 +29,8 @@ def get_users(data_directory):
 def merge_and_normalize(data_directory, df_names, signals, user_max_segments=None, labeled=False):
 
     data = {} # Dizionario dei segnali
-    label_df = pd.DataFrame() # Df delle etichette
+    valence_df = pd.DataFrame() # Df delle etichette
+    arousal_df = pd.DataFrame() # Df delle etichette
 
     # Inizializzazione del dizionario dei df
     for signal in signals:
@@ -52,10 +53,13 @@ def merge_and_normalize(data_directory, df_names, signals, user_max_segments=Non
                 data_temp[signal][col] = data_temp[signal][col].astype(float)
             data_temp[signal]['segment_id'] = data_temp[signal]['segment_id'].astype(int)
         if labeled:
-            label_df_temp = pd.read_csv(f'{directory}LABELS.csv', header=None, low_memory=False)
+            valence_df_temp = pd.read_csv(f'{directory}VALENCE.csv', header=None, low_memory=False)
+            arousal_df_temp = pd.read_csv(f'{directory}AROUSAL.csv', header=None, low_memory=False)
             c = ['segment_id', 'valence', 'arousal']
-            label_df_temp.columns = c
-            label_df_temp = label_df_temp.iloc[1:]
+            valence_df_temp.columns = ['segment_id', 'valence']
+            arousal_df_temp.columns = ['segment_id', 'arousal']
+            valence_df_temp = valence_df_temp.iloc[1:]
+            arousal_df_temp = arousal_df_temp.iloc[1:]
 
         # Se è fissato un numero massimo di segmenti per utente si cancellano se sono di numero maggiore
         # NON FUNZIONA CON IL SEGMENT_ID DI TIPO INTERO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -93,7 +97,8 @@ def merge_and_normalize(data_directory, df_names, signals, user_max_segments=Non
         for signal in signals:
             data[signal] = pd.concat([data[signal], data_temp[signal]], axis=0, ignore_index=True)
         if labeled:
-            label_df = pd.concat([label_df, label_df_temp], axis=0, ignore_index=True)
+            valence_df = pd.concat([valence_df, valence_df_temp], axis=0, ignore_index=True)
+            arousal_df = pd.concat([arousal_df, arousal_df_temp], axis=0, ignore_index=True)
 
         progress_bar.update(1)
     progress_bar.close()
@@ -113,7 +118,8 @@ def merge_and_normalize(data_directory, df_names, signals, user_max_segments=Non
     for signal in signals:
         if labeled:
             data[signal].to_csv(f'processed_data\\{signal}_LABELED.csv', index=False)
-            label_df.to_csv(f'processed_data\\LABELS.csv', index=False)
+            valence_df.to_csv(f'processed_data\\VALENCE.csv', index=False)
+            arousal_df.to_csv(f'processed_data\\AROUSAL.csv', index=False)
         else:
             data[signal].to_csv(f'processed_data\\{signal}.csv', index=False)
         progress_bar.update(1)
