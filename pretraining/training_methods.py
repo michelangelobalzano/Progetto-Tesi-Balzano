@@ -8,7 +8,14 @@ from torch.nn import functional as F
 
 
 # Calcolo della loss per il pre-training con masked prediction
-def masked_prediction_loss(predictions, true, masks):
+def masked_prediction_loss(predictions, labels):
+
+    criterion = nn.CrossEntropyLoss()
+
+    return criterion(predictions, labels)
+
+# Calcolo della loss per la classificazione
+def classification_loss(predictions, true, masks):
 
     criterion = nn.MSELoss(reduction='mean')# Criterio di minimizzazione dell'errore
     
@@ -71,6 +78,29 @@ def validate_pretrain_model(model, dataloader, num_signals, segment_length, iper
 
     # Calcola la loss media per la validazione
     return val_loss / num_batches, model
+
+# Train di un epoca
+def train_classification_model(model, dataloader, num_signals, segment_length, iperparametri, optimizer, device):
+    
+    model.train()
+    train_loss = 0.0
+    num_batches = len(dataloader)
+
+    progress_bar = tqdm(total=num_batches, desc="Train batch analizzati")
+    for batch in dataloader:
+        X, labels = batch
+        
+        optimizer.zero_grad() # Azzeramento dei gradienti
+        predictions = model(X) # Passaggio del batch al modello
+        loss = classification_loss(predictions, labels) # Calcolo della loss
+        loss.backward() # Aggiornamento dei pesi
+        optimizer.step()
+        train_loss += loss.item() # Accumulo della loss
+
+        progress_bar.update(1)
+    progress_bar.close()
+
+    return train_loss / num_batches, model
 
 ''' 
 # Metodo per il criterio di stop anticipato

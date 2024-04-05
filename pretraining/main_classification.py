@@ -1,12 +1,12 @@
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader, TensorDataset
-from transformer import TSTransformer
+from transformer import TSTransformerClassifier
 import torch
 import csv
 import time
 from datetime import datetime
-from data_preparation import load_labeled_data, prepare_data, prepare_classification_data, my_collate_fn, classification_data_split
+from data_preparation import load_labeled_data, prepare_data, prepare_classification_data, my_classification_collate_fn, classification_data_split
 from training_methods import train_pretrain_model, validate_pretrain_model#, early_stopping
 from graphs_methods import losses_graph
 
@@ -17,6 +17,8 @@ num_signals = len(signals) # Numero dei segnali
 segment_length = 240 # Lunghezza dei segmenti in time steps
 split_ratios = [70, 15, 15] # Split ratio dei segmenti per la task classification
 num_epochs = 15 # Numero epoche task classification
+
+label = 'valence' # oppure 'arousal'
 
 # Iperparametri modello
 iperparametri = {
@@ -54,29 +56,29 @@ num_test_segments = len(test['BVP'].groupby('segment_id'))
 print('Numero di segmenti per training: ', num_train_segments)
 print('Numero di segmenti per validation: ', num_val_segments)
 print('Numero di segmenti per test: ', num_test_segments)
-print(train_labels)
-print(val_labels)
-print(test_labels)
 
-input()
 # Preparazione dati
 print('Conversione dati in tensori...')
-train_data = prepare_data(train, num_signals, num_train_segments, segment_length)
-val_data = prepare_data(val, num_signals, num_val_segments, segment_length)
-test_data = prepare_classification_data(test, num_signals, num_test_segments, segment_length)
+train_data, train_valence, train_arousal = prepare_classification_data(train, train_labels, num_signals, num_train_segments, segment_length)
+val_data, val_valence, val_arousal = prepare_classification_data(val, val_labels, num_signals, num_val_segments, segment_length)
+test_data, test_valence, test_arousal = prepare_classification_data(test, test_labels, num_signals, num_test_segments, segment_length)
 
 # Creazione del DataLoader
 print('Suddivisione dati in batch...')
 train_data = train_data.permute(1, 0, 2).to(device)
 val_data = val_data.permute(1, 0, 2).to(device)
-train_dataset = TensorDataset(train_data)
-val_dataset = TensorDataset(val_data)
-train_dataloader = DataLoader(train_dataset, batch_size=iperparametri['batch_size'], shuffle=True, drop_last=True, collate_fn=my_collate_fn)
-val_dataloader = DataLoader(val_dataset, batch_size=iperparametri['batch_size'], shuffle=True, drop_last=True, collate_fn=my_collate_fn)
+test_data = test_data.permute(1, 0, 2).to(device)
+train_dataset = TensorDataset(train_data, train_valence, train_arousal)
+val_dataset = TensorDataset(val_data, val_valence, val_arousal)
+test_dataset = TensorDataset(test_data, test_valence, test_arousal)
+train_dataloader = DataLoader(train_dataset, batch_size=iperparametri['batch_size'], shuffle=True, drop_last=True, collate_fn=my_classification_collate_fn)
+val_dataloader = DataLoader(val_dataset, batch_size=iperparametri['batch_size'], shuffle=True, drop_last=True, collate_fn=my_classification_collate_fn)
+test_dataloader = DataLoader(test_dataset, batch_size=iperparametri['batch_size'], shuffle=True, drop_last=True, collate_fn=my_classification_collate_fn)
 
 # Definizione transformer
 print('Creazione del modello...')
-model = TSTransformer(num_signals, segment_length, iperparametri, device)
+model = TSTransformerClassifier(num_signals, segment_length, iperparametri, 3, device)
+model.load_state_dict(torch.load('pretraining\\models\\model_03-28_12-47.pth'))
 model = model.to(device)
 
 # Definizione dell'ottimizzatore (AdamW)

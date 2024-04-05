@@ -67,19 +67,47 @@ def prepare_data(data, num_signals, num_segments, segment_length):
     return prepared_data
 
 # Conversione dei dati in un tensore di dimensioni (num_signals, num_segments, segment_length)
-def prepare_classification_data(data, num_signals, num_segments, segment_length):
+def prepare_classification_data(data, labels, num_signals, num_segments, segment_length):
     
+    # Conversione dati in tensore
     prepared_data = torch.zeros(num_signals, num_segments, segment_length)
-    
     for i, (key, df) in enumerate(data.items()):
-
         for k, (segment_id, segment_data) in enumerate(df.groupby('segment_id')):
-            segment_tensor = torch.tensor(segment_data.iloc[:, :-3].values, dtype=torch.float32)
+            segment_tensor = torch.tensor(segment_data.iloc[:, :-1].values, dtype=torch.float32)
             prepared_data[i, k] = segment_tensor.squeeze()
+
+    # Conversione etichette valence in tensore
+    prepared_valence = []
+    for index, row in labels.iterrows():
+        # Memorizzazione del valore della colonna nella lista del tensore
+        if row['valence'] == 'negative':
+            prepared_valence.append(-1)
+        elif row['valence'] == 'positive':
+            prepared_valence.append(1)
+        elif row['valence'] == 'neutral':
+            prepared_valence.append(0)
+    prepared_valence = torch.tensor(prepared_valence)
+
+    # Conversione etichette arousal in tensore
+    prepared_arousal = []
+    for index, row in labels.iterrows():
+        # Memorizzazione del valore della colonna nella lista del tensore
+        if row['arousal'] == 'negative':
+            prepared_arousal.append(-1)
+        elif row['arousal'] == 'positive':
+            prepared_arousal.append(1)
+        elif row['arousal'] == 'neutral':
+            prepared_arousal.append(0)
+    prepared_arousal = torch.tensor(prepared_arousal)
     
-    return prepared_data
+    return prepared_data, prepared_valence, prepared_arousal
+
 
 # Collate Function per il DataLoader
 def my_collate_fn(batch):
 
     return torch.stack([item[0] for item in batch])
+
+def my_classification_collate_fn(batch):
+
+    return torch.stack([item[0] for item in batch]), torch.tensor([item[1] for item in batch])
