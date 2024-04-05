@@ -43,9 +43,19 @@ def merge_and_normalize(data_directory, df_names, signals, user_max_segments=Non
 
         data_temp = {}
         for signal in signals:
-            data_temp[signal] = pd.read_csv(f'{directory}{signal}.csv')
+            data_temp[signal] = pd.read_csv(f'{directory}{signal}.csv', header=None, low_memory=False)
+            c = cols_to_normalize[signal].copy()
+            c.append('segment_id')
+            data_temp[signal].columns = c
+            data_temp[signal] = data_temp[signal].iloc[1:]
+            for col in cols_to_normalize[signal]:
+                data_temp[signal][col] = data_temp[signal][col].astype(float)
+            data_temp[signal]['segment_id'] = data_temp[signal]['segment_id'].astype(int)
         if labeled:
-            label_df_temp = pd.read_csv(f'{directory}LABELS.csv')
+            label_df_temp = pd.read_csv(f'{directory}LABELS.csv', header=None, low_memory=False)
+            c = ['segment_id', 'valence', 'arousal']
+            label_df_temp.columns = c
+            label_df_temp = label_df_temp.iloc[1:]
 
         # Se è fissato un numero massimo di segmenti per utente si cancellano se sono di numero maggiore
         # NON FUNZIONA CON IL SEGMENT_ID DI TIPO INTERO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -82,8 +92,8 @@ def merge_and_normalize(data_directory, df_names, signals, user_max_segments=Non
         # Concatenazione del dataset
         for signal in signals:
             data[signal] = pd.concat([data[signal], data_temp[signal]], axis=0, ignore_index=True)
-            if labeled:
-                label_df = pd.concat([label_df, label_df_temp], axis=0, ignore_index=True)
+        if labeled:
+            label_df = pd.concat([label_df, label_df_temp], axis=0, ignore_index=True)
 
         progress_bar.update(1)
     progress_bar.close()
