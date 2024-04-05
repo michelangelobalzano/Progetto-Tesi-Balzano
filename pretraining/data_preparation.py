@@ -3,7 +3,7 @@ import torch
 from sklearn.model_selection import train_test_split
 
 # Caricamento dei dati
-def load_data(data_directory, signals, task):
+def load_data(data_directory, signals):
 
     data = {}
     for signal in signals:
@@ -12,13 +12,16 @@ def load_data(data_directory, signals, task):
     return data
 
 # Caricamento dei dati
-def load_labeled_data(data_directory, signals, task):
+def load_labeled_data(data_directory, signals, label):
 
     data = {}
     for signal in signals:
         file_path = data_directory + signal + '_LABELED.csv'
         data[signal] = pd.read_csv(file_path, low_memory=False)
-    labels = pd.read_csv(data_directory + 'LABELS.csv')
+    if label == 'valence':
+        labels = pd.read_csv(data_directory + 'VALENCE.csv')
+    elif label == 'arousal':
+        labels = pd.read_csv(data_directory + 'AROUSAL.csv')
     return data, labels
 
 # Suddivisione dei segmenti in train e val per la task pretraining
@@ -67,7 +70,7 @@ def prepare_data(data, num_signals, num_segments, segment_length):
     return prepared_data
 
 # Conversione dei dati in un tensore di dimensioni (num_signals, num_segments, segment_length)
-def prepare_classification_data(data, labels, num_signals, num_segments, segment_length):
+def prepare_classification_data(data, labels, num_signals, num_segments, segment_length, label):
     
     # Conversione dati in tensore
     prepared_data = torch.zeros(num_signals, num_segments, segment_length)
@@ -77,30 +80,18 @@ def prepare_classification_data(data, labels, num_signals, num_segments, segment
             prepared_data[i, k] = segment_tensor.squeeze()
 
     # Conversione etichette valence in tensore
-    prepared_valence = []
+    prepared_labels = []
     for index, row in labels.iterrows():
         # Memorizzazione del valore della colonna nella lista del tensore
-        if row['valence'] == 'negative':
-            prepared_valence.append(-1)
-        elif row['valence'] == 'positive':
-            prepared_valence.append(1)
-        elif row['valence'] == 'neutral':
-            prepared_valence.append(0)
-    prepared_valence = torch.tensor(prepared_valence)
-
-    # Conversione etichette arousal in tensore
-    prepared_arousal = []
-    for index, row in labels.iterrows():
-        # Memorizzazione del valore della colonna nella lista del tensore
-        if row['arousal'] == 'negative':
-            prepared_arousal.append(-1)
-        elif row['arousal'] == 'positive':
-            prepared_arousal.append(1)
-        elif row['arousal'] == 'neutral':
-            prepared_arousal.append(0)
-    prepared_arousal = torch.tensor(prepared_arousal)
+        if row[label] == 'negative':
+            prepared_labels.append(-1)
+        elif row[label] == 'positive':
+            prepared_labels.append(1)
+        elif row[label] == 'neutral':
+            prepared_labels.append(0)
+    prepared_labels = torch.tensor(prepared_labels)
     
-    return prepared_data, prepared_valence, prepared_arousal
+    return prepared_data, prepared_labels
 
 
 # Collate Function per il DataLoader

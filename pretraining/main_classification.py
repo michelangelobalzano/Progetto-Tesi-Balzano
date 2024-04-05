@@ -45,7 +45,7 @@ else:
 
 # Caricamento e preparazione dei dati
 print('Caricamento dei dati...')
-data, labels = load_labeled_data(data_directory, signals, 'classification')
+data, labels = load_labeled_data(data_directory, signals, label)
 
 # Split dei dati
 print('Split dei dati in train/val/test...')
@@ -59,18 +59,18 @@ print('Numero di segmenti per test: ', num_test_segments)
 
 # Preparazione dati
 print('Conversione dati in tensori...')
-train_data, train_valence, train_arousal = prepare_classification_data(train, train_labels, num_signals, num_train_segments, segment_length)
-val_data, val_valence, val_arousal = prepare_classification_data(val, val_labels, num_signals, num_val_segments, segment_length)
-test_data, test_valence, test_arousal = prepare_classification_data(test, test_labels, num_signals, num_test_segments, segment_length)
+train_data, train_labels = prepare_classification_data(train, train_labels, num_signals, num_train_segments, segment_length, label)
+val_data, val_labels = prepare_classification_data(val, val_labels, num_signals, num_val_segments, segment_length, label)
+test_data, test_labels = prepare_classification_data(test, test_labels, num_signals, num_test_segments, segment_length, label)
 
 # Creazione del DataLoader
 print('Suddivisione dati in batch...')
 train_data = train_data.permute(1, 0, 2).to(device)
 val_data = val_data.permute(1, 0, 2).to(device)
 test_data = test_data.permute(1, 0, 2).to(device)
-train_dataset = TensorDataset(train_data, train_valence, train_arousal)
-val_dataset = TensorDataset(val_data, val_valence, val_arousal)
-test_dataset = TensorDataset(test_data, test_valence, test_arousal)
+train_dataset = TensorDataset(train_data, train_labels)
+val_dataset = TensorDataset(val_data, val_labels)
+test_dataset = TensorDataset(test_data, test_labels)
 train_dataloader = DataLoader(train_dataset, batch_size=iperparametri['batch_size'], shuffle=True, drop_last=True, collate_fn=my_classification_collate_fn)
 val_dataloader = DataLoader(val_dataset, batch_size=iperparametri['batch_size'], shuffle=True, drop_last=True, collate_fn=my_classification_collate_fn)
 test_dataloader = DataLoader(test_dataset, batch_size=iperparametri['batch_size'], shuffle=True, drop_last=True, collate_fn=my_classification_collate_fn)
