@@ -63,8 +63,6 @@ def read_sensor_data(data_directory, users, signals, min_seconds):
 def preprocessing(data_directory, df_name, signals, min_seconds, target_freq, w_size, w_step_size):
     
     users = get_users(data_directory)
-    print(users)
-    # Lettura del dataset e della lista degli utenti
     data = read_sensor_data(data_directory, users, signals, min_seconds)
 
     # Preprocessing dei dataframe
@@ -90,7 +88,6 @@ def preprocessing(data_directory, df_name, signals, min_seconds, target_freq, w_
             data_temp = sleep_detection(data_temp, signals)
             for signal in set(signals) | set(necessary_signals):
                 data[user_id][signal][i] = data_temp[signal]
-
         progress_bar.update(1)
     progress_bar.close()
 

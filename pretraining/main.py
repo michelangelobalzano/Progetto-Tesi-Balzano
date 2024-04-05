@@ -7,7 +7,7 @@ import torch
 import csv
 import time
 from datetime import datetime
-from data_preparation import load_data, prepare_data, my_collate_fn
+from data_preparation import load_data, prepare_data, prepare_classification_data, my_collate_fn
 from training_methods import train_pretrain_model, validate_pretrain_model, try_model#, early_stopping
 from graphs_methods import losses_graph
 
@@ -68,6 +68,8 @@ if task == 'classification':
 print('Conversione dati in tensori...')
 train_data = prepare_data(train, num_signals, num_train_segments, segment_length)
 val_data = prepare_data(val, num_signals, num_val_segments, segment_length)
+if task == 'classification':
+    test_data = prepare_classification_data(test, num_signals, num_test_segments, segment_length)
 
 # Creazione del DataLoader
 print('Suddivisione dati in batch...')
@@ -110,7 +112,6 @@ for epoch in range(num_pretrain_epochs):
     # Salvataggio delle informazioni dell'epoca
     epoch_info['train_losses'].append(train_loss)
     epoch_info['val_losses'].append(val_loss)
-
 
     '''# Controllo dell'arresto anticipato
     if early_stopping(val_losses):

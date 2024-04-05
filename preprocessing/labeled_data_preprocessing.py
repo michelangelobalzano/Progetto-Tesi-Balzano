@@ -1,47 +1,41 @@
-from os import listdir
-from os.path import isfile, join
+import os
+from os.path import join
 import pandas as pd
 from tqdm import tqdm
 from preprocessing_methods import structure_modification, segmentation, export_df, necessary_signals
 
+def get_users(data_directory):
 
-####################################################################################################################
-# DATASET ETICHETTATO: dataset composto da 15 utenti, ognuno avente una registrazione
-####################################################################################################################
+    users = set()
+    for user_directory in os.listdir(data_directory):
+        if os.path.isdir(os.path.join(data_directory, user_directory)):
+            user_id = user_directory
+            users.add(user_id)
 
-# Id degli utenti
-users = ['S2', 'S3', 'S4', 'S5', 'S6',
-          'S7', 'S8', 'S9', 'S10', 'S11', 
-          'S13', 'S14', 'S15', 'S16', 'S17']
+    return list(users)
 
-
-
-
-
-####################################################################################################################
-# Lettura dei dataset e creazione di un dizionario per ogni sensore
-# Ogni dizionario è composto da un dataset per ogni utente
-####################################################################################################################
-def read_sensor_data(data_directory, df_name, signals):
+def read_sensor_data(data_directory, users, signals):
 
     data = {}
 
-    progress_bar = tqdm(total=len(users), desc="Data reading")
+    # Creazione struttura dati
     for user_id in users:
-
         data[user_id] = {}
 
-        directory = data_directory + df_name + '\\' + user_id + '\\'
+    progress_bar = tqdm(total=len(users), desc="Data reading")
+    for user_directory in os.listdir(data_directory):
 
-        file_path = [f for f in listdir(directory) if isfile(join(directory, f))]
+        if os.path.isdir(os.path.join(data_directory, user_directory)):
+            user_directory_path = os.path.join(data_directory, user_directory)
+            user_id = user_directory
 
-        for signal in set(signals) | set(necessary_signals) | set(['BVP_LABELED']):
-            
-            for file in file_path:
+            files = [f for f in os.listdir(user_directory_path) if os.path.isfile(join(user_directory_path, f))]
 
-                if file.endswith(f'{signal}.csv'):
-                    data[user_id][signal] = pd.read_csv(join(directory, file), header=None)
-                    break
+            for signal in set(signals) | set(necessary_signals) | set(['BVP_LABELED']):
+                for file in files:
+                    if file.endswith(f'{signal}.csv'):
+                        data[user_id][signal] = pd.read_csv(join(user_directory_path, file), header=None)
+                        break
 
         data[user_id]['BVP_LABELED'].columns = ['time', 'bvp', 'valence', 'arousal']
         data[user_id]['BVP_LABELED'] = data[user_id]['BVP_LABELED'].iloc[1:]
@@ -71,17 +65,14 @@ def read_sensor_data(data_directory, df_name, signals):
 # Lettura del dataset
 def labeled_data_preprocessing(data_directory, df_name, signals, target_freq, w_size, w_step_size):
     
-    # Lettura del dataset
-    data = read_sensor_data(data_directory, df_name, signals)
+    users = get_users(data_directory)
+    data = read_sensor_data(data_directory, users, signals)
 
     progress_bar = tqdm(total=len(users), desc="User preprocessing")
     for user_id in users:
-
         # Modifica dei dataframe
         for signal in set(signals) | set(necessary_signals):
-
             data[user_id][signal] = structure_modification(data[user_id][signal].copy(), signal, target_freq)
-
         progress_bar.update(1)
     progress_bar.close()
 
@@ -94,14 +85,12 @@ def labeled_data_preprocessing(data_directory, df_name, signals, target_freq, w_
     # Ritaglio degli intervalli etichettati
     progress_bar = tqdm(total=len(users), desc="Labeling")
     for user_id in users:
-
         # Recupero dei time-stamp etichettati
         labeled_times = data[user_id]['BVP_LABELED'].loc[data[user_id]['BVP_LABELED']['valence'].notnull(), 'time']
         # Ritaglio dei df lasciando solo gli intervalli etichettati
         for signal in set(signals) | set(['BVP_LABELED']):
             data[user_id][signal]['time'] = pd.to_datetime(data[user_id][signal]['time'])
             data[user_id][signal] = data[user_id][signal][data[user_id][signal]['time'].isin(labeled_times)]
-
         progress_bar.update(1)
     progress_bar.close()
 
@@ -113,11 +102,10 @@ def labeled_data_preprocessing(data_directory, df_name, signals, target_freq, w_
     # Segmentazione dei df
     progress_bar = tqdm(total=len(users), desc="Segmentation")
     for user_id in users:
-
         # Produzione dei segmenti
         data_temp = {}
         for signal in set(signals) | set(['BVP_LABELED']):
-            data_temp[signal] = segmentation(data[user_id][signal], segment_prefix=f'{df_name}_{user_id}_', w_size=w_size, w_step_size=w_step_size)
+            data_temp[signal] = segmentation(data[user_id][signal], segment_prefix=f'{df_name}{user_id}', w_size=w_size, w_step_size=w_step_size)
             segmented_data[signal] = pd.concat([segmented_data[signal], data_temp[signal]], axis=0, ignore_index=True)
         progress_bar.update(1)
     progress_bar.close()
@@ -151,9 +139,9 @@ def labeled_data_preprocessing(data_directory, df_name, signals, target_freq, w_
     # Esportazione delle features del dataset
     for signal in signals:
         print(f"Esportazione {signal}...")
-        export_df(segmented_data[signal], data_directory, df_name, signal)
+        export_df(segmented_data[signal], data_directory, signal)
     print(f"Esportazione BVP...")
-    export_df(segmented_data['BVP_LABELED'], data_directory, df_name, 'BVP')
+    export_df(segmented_data['BVP_LABELED'], data_directory, 'BVP')
     print(f"Esportazione etichette...")
-    export_df(label_df, data_directory, df_name, 'LABELS')
+    export_df(label_df, data_directory, 'LABELS')
     
