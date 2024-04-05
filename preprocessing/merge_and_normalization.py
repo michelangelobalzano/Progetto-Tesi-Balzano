@@ -1,6 +1,11 @@
+import os
+from os.path import join
 import pandas as pd
 from tqdm import tqdm
 import numpy as np
+
+
+from preprocessing_methods import precision
 
 # Colonne da normalizzare per ogni segnale
 cols_to_normalize = {
@@ -11,7 +16,17 @@ cols_to_normalize = {
     'TEMP': ['temp']
 }
 
-def merge_and_normalize(data_directory, df_names, signals, user_max_segments, labeled=False):
+def get_users(data_directory):
+
+    users = set()
+    for user_directory in os.listdir(data_directory):
+        if os.path.isdir(os.path.join(data_directory, user_directory)):
+            user_id = user_directory
+            users.add(user_id)
+
+    return list(users)
+
+def merge_and_normalize(data_directory, df_names, signals, user_max_segments=None, labeled=False):
 
     data = {} # Dizionario dei segnali
     label_df = pd.DataFrame() # Df delle etichette
@@ -32,28 +47,36 @@ def merge_and_normalize(data_directory, df_names, signals, user_max_segments, la
         if labeled:
             label_df_temp = pd.read_csv(f'{directory}LABELS.csv')
 
-        if not labeled:
-            # Determinazione utenti
-            users = {'_'.join(segment_id.split('_')[:-1]) for segment_id in data_temp[signals[0]]['segment_id']}
+        # Se è fissato un numero massimo di segmenti per utente si cancellano se sono di numero maggiore
+        # NON FUNZIONA CON IL SEGMENT_ID DI TIPO INTERO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        '''if not user_max_segments == None:
+            if not labeled:
+                # Determinazione utenti
+                users = get_users(directory)
+                # Riordinamento decrescente degli utenti per cercare i segmenti utente con il segment_id
+                users = list(map(int, users))
+                users.sort(reverse=True)
+                users = [str(x) for x in users]
 
-            # Determinazione segmenti da mantenere
-            segments_to_delete = set()
-            for user_id in users:
-                user_segments = data_temp[signals[0]].loc[data_temp[signals[0]]['segment_id'].str.startswith(user_id), 'segment_id'].unique()
-                n_segmenti_tot += len(user_segments) # Provvisorio
+                # Determinazione segmenti da mantenere
+                segments_to_delete = set()
+                for user_id in users:
+                    user_segments = data_temp[signals[0]].loc[data_temp[signals[0]]['segment_id'].astype(str).str.startswith(str(df_name+user_id)), 'segment_id'].unique()
+                    n_segmenti_tot += len(user_segments) # Provvisorio
+                    print(f'numero segmenti di {user_id}: {len(user_segments)}')
 
-                if len(user_segments) > user_max_segments:
-                    segments_to_delete.update(np.random.choice(user_segments, size=len(user_segments)-user_max_segments, replace=False))
-                    
-            n_segmenti_da_cancellare_tot += len(segments_to_delete) # Provvisorio
-            
-            if len(segments_to_delete) > 0:
-                for signal in signals:
-                    data_temp[signal] = data_temp[signal][~data_temp[signal]['segment_id'].isin(segments_to_delete)]
+                    if len(user_segments) > user_max_segments:
+                        segments_to_delete.update(np.random.choice(user_segments, size=len(user_segments)-user_max_segments, replace=False))
+                        
+                n_segmenti_da_cancellare_tot += len(segments_to_delete) # Provvisorio
+                
+                if len(segments_to_delete) > 0:
+                    for signal in signals:
+                        data_temp[signal] = data_temp[signal][~data_temp[signal]['segment_id'].isin(segments_to_delete)]
 
         print('TOTALE SEGMENTI: ', n_segmenti_tot)
         print('TOTALE SEGMENTI DA CANCELLARE: ', n_segmenti_da_cancellare_tot)
-        print('NUMERO SEGMENTI RISULTANTI: ', data_temp[signals[0]]['segment_id'].nunique())
+        print('NUMERO SEGMENTI RISULTANTI: ', data_temp[signals[0]]['segment_id'].nunique())'''
 
 
         # Concatenazione del dataset
@@ -67,15 +90,21 @@ def merge_and_normalize(data_directory, df_names, signals, user_max_segments, la
 
     ######################################################
     # Normalization
+    progress_bar = tqdm(total=len(signals), desc="Normalization")
     for signal in signals:
         for col in cols_to_normalize[signal]:
             mean = data[signal][col].mean()
             std = data[signal][col].std()
-            data[signal][col] = (data[signal][col] - mean) / std
+            data[signal][col] = round((data[signal][col] - mean) / std, precision[signal])
+        progress_bar.update(1)
+    progress_bar.close()
 
+    progress_bar = tqdm(total=len(signals), desc="Extraction")
     for signal in signals:
         if labeled:
             data[signal].to_csv(f'processed_data\\{signal}_LABELED.csv', index=False)
             label_df.to_csv(f'processed_data\\LABELS.csv', index=False)
         else:
             data[signal].to_csv(f'processed_data\\{signal}.csv', index=False)
+        progress_bar.update(1)
+    progress_bar.close()
