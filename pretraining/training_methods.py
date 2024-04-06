@@ -7,17 +7,17 @@ from graphs_methods import try_graph
 from torch.nn import functional as F
 
 
-# Calcolo della loss per il pre-training con masked prediction
-def masked_prediction_loss(predictions, labels):
+# Calcolo della loss per la classificazione
+def classification_loss(predictions, labels):
 
     criterion = nn.CrossEntropyLoss()
 
     return criterion(predictions, labels)
 
-# Calcolo della loss per la classificazione
-def classification_loss(predictions, true, masks):
+# Calcolo della loss per il pre-training con masked prediction
+def masked_prediction_loss(predictions, true, masks):
 
-    criterion = nn.MSELoss(reduction='mean')# Criterio di minimizzazione dell'errore
+    criterion = nn.MSELoss(reduction='mean')
     
     masked_true = torch.masked_select(true, masks)
     masked_predictions = torch.masked_select(predictions, masks)

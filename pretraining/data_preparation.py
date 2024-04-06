@@ -3,7 +3,7 @@ import torch
 from sklearn.model_selection import train_test_split
 
 # Caricamento dei dati
-def load_data(data_directory, signals):
+def load_unlabeled_data(data_directory, signals):
 
     data = {}
     for signal in signals:
@@ -27,7 +27,7 @@ def load_labeled_data(data_directory, signals, label):
 # Suddivisione dei segmenti in train e val per la task pretraining
 def pretrain_data_split(data, split_ratios, signals):
     segment_ids = data['BVP']['segment_id'].unique()
-    train_segment_ids, val_segment_ids = train_test_split(segment_ids, train_size=split_ratios[0], random_state=42)
+    train_segment_ids, val_segment_ids = train_test_split(segment_ids, train_size=split_ratios[0]/100, random_state=42)
 
     train_data = {}
     val_data = {}
@@ -95,10 +95,10 @@ def prepare_classification_data(data, labels, num_signals, num_segments, segment
 
 
 # Collate Function per il DataLoader
-def my_collate_fn(batch):
+def pretrain_collate_fn(batch):
 
     return torch.stack([item[0] for item in batch])
 
-def my_classification_collate_fn(batch):
+def classification_collate_fn(batch):
 
     return torch.stack([item[0] for item in batch]), torch.tensor([item[1] for item in batch])

@@ -6,8 +6,8 @@ import torch
 import csv
 import time
 from datetime import datetime
-from data_preparation import load_labeled_data, prepare_data, prepare_classification_data, my_classification_collate_fn, classification_data_split
-from training_methods import train_pretrain_model, validate_pretrain_model#, early_stopping
+from data_preparation import load_labeled_data, prepare_classification_data, classification_collate_fn, classification_data_split
+from training_methods import train_pretrain_model, validate_pretrain_model
 from graphs_methods import losses_graph
 
 data_directory = 'processed_data\\' # Percorso dei dati
@@ -25,8 +25,8 @@ iperparametri = {
     'batch_size' : 256, # Dimensione di un batch di dati (in numero di segmenti)
     'masking_ratio' : 0.15, # Rapporto di valori mascherati
     'lm' : 12, # Lunghezza delle sequenze mascherate all'interno di una singola maschera
-    'd_model' : 256, #
-    'dropout' : 0.1, #
+    'd_model' : 256, # Dimensione interna del modello
+    'dropout' : 0.1, # 
     'num_heads' : 4, # Numero di teste del modulo di auto-attenzione 
     'num_layers' : 3 # Numero di layer dell'encoder
 }
@@ -50,9 +50,9 @@ data, labels = load_labeled_data(data_directory, signals, label)
 # Split dei dati
 print('Split dei dati in train/val/test...')
 train, train_labels, val, val_labels, test, test_labels = classification_data_split(data, labels, split_ratios, signals)
-num_train_segments = len(train['BVP'].groupby('segment_id'))
-num_val_segments = len(val['BVP'].groupby('segment_id'))
-num_test_segments = len(test['BVP'].groupby('segment_id'))
+num_train_segments = len(train[0].groupby('segment_id'))
+num_val_segments = len(val[0].groupby('segment_id'))
+num_test_segments = len(test[0].groupby('segment_id'))
 print('Numero di segmenti per training: ', num_train_segments)
 print('Numero di segmenti per validation: ', num_val_segments)
 print('Numero di segmenti per test: ', num_test_segments)
@@ -71,9 +71,9 @@ test_data = test_data.permute(1, 0, 2).to(device)
 train_dataset = TensorDataset(train_data, train_labels)
 val_dataset = TensorDataset(val_data, val_labels)
 test_dataset = TensorDataset(test_data, test_labels)
-train_dataloader = DataLoader(train_dataset, batch_size=iperparametri['batch_size'], shuffle=True, drop_last=True, collate_fn=my_classification_collate_fn)
-val_dataloader = DataLoader(val_dataset, batch_size=iperparametri['batch_size'], shuffle=True, drop_last=True, collate_fn=my_classification_collate_fn)
-test_dataloader = DataLoader(test_dataset, batch_size=iperparametri['batch_size'], shuffle=True, drop_last=True, collate_fn=my_classification_collate_fn)
+train_dataloader = DataLoader(train_dataset, batch_size=iperparametri['batch_size'], shuffle=True, drop_last=True, collate_fn=classification_collate_fn)
+val_dataloader = DataLoader(val_dataset, batch_size=iperparametri['batch_size'], shuffle=True, drop_last=True, collate_fn=classification_collate_fn)
+test_dataloader = DataLoader(test_dataset, batch_size=iperparametri['batch_size'], shuffle=True, drop_last=True, collate_fn=classification_collate_fn)
 
 # Definizione transformer
 print('Creazione del modello...')

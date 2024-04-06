@@ -209,6 +209,8 @@ class TSTransformer(nn.Module):
         output = self.act(output) # Funzione di attivazione
         output = output.permute(1, 0, 2)  # [batch_size, segment_length, d_model]
         output = self.dropout1(output) # Dropout
+        
+        
         output = self.output_layer(output) # Layer di output
         # [batch_size, segment_length, num_signals]
         output = output.permute(0, 2, 1) # [batch_size, num_signals, segment_length]
@@ -226,20 +228,15 @@ class TSTransformerClassifier(nn.Module):
         self.num_layers = iperparametri['num_layers']
         self.num_heads = iperparametri['num_heads']
         self.device = device
+        self.num_classes = num_classes
 
         self.project_inp = nn.Linear(self.num_signals, self.d_model)
         self.pos_enc = PositionalEncoding(segment_length, self.d_model, self.dropout, self.device)
         encoder_layer = MyEncoderLayer(self.d_model, self.num_heads, self.d_model, self.dropout)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, self.num_layers)
+        self.output_layer = nn.Linear(self.d_model * segment_length, num_classes)
         self.act = F.gelu
         self.dropout1 = nn.Dropout(self.dropout)
-
-        self.num_classes = num_classes
-        self.output_layer = self.build_output_module(self.d_model, self.segment_length, self.num_classes)
-
-    def build_output_module(self, d_model, segment_length, num_classes):
-        output_layer = nn.Linear(d_model * segment_length, num_classes)
-        return output_layer
 
     def forward(self, X):
 
@@ -254,6 +251,8 @@ class TSTransformerClassifier(nn.Module):
         output = self.act(output) # Funzione di attivazione
         output = output.permute(1, 0, 2)  # [batch_size, segment_length, d_model]
         output = self.dropout1(output) # Dropout
+        
+        
         output = output.reshape(output.shape[0], -1) # [batch_size, segment_length * d_model]
         output = self.output_layer(output)  # Layer di output
         

@@ -1,5 +1,7 @@
 import torch
 import random
+import pandas as pd
+import csv
 
 '''
 # Generazione di una maschera per ogni segnale e segmento
@@ -63,3 +65,18 @@ def generate_random_start_idx(num_numbers, range_start, range_end, distance):
             numbers.append(int(new_number))
 
     return numbers
+
+def load_model(model, model_path, model_name):
+    model.load_state_dict(torch.load(model_path + 'model_' + model_name + '.pth'))
+    iperparametri = {}
+    with open('training_sessions\\training_info_' + model_name + '.csv', newline='') as csvfile:
+        reader = csv.reader(csvfile)
+        for row_number, row in enumerate(reader):
+            if row_number < 7:
+                chiave = row[0]
+                valore = int(row[1]) if row[1].isdigit() else float(row[1])
+                iperparametri[chiave] = valore
+            else:
+                break
+    
+    return model, iperparametri
