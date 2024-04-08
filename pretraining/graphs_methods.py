@@ -6,9 +6,8 @@ import numpy as np
  
 def losses_graph(epoch_info, save_path):
 
-    # Plot delle curve di loss di training e validazione
-    plt.plot(epoch_info['train_losses'], label='Train Loss')
-    plt.plot(epoch_info['val_losses'], label='Val Loss')
+    for key, _ in epoch_info.items():
+        plt.plot(epoch_info[key], label=key)
 
     # Aggiungi etichette agli assi e una legenda
     plt.xlabel('Epoch')

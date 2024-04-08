@@ -80,7 +80,7 @@ def validate_pretrain_model(model, dataloader, num_signals, segment_length, iper
     return val_loss / num_batches, model
 
 # Train di un epoca
-def train_classification_model(model, dataloader, optimizer):
+def train_classification_model(model, dataloader, optimizer, device):
     
     model.train()
     train_loss = 0.0
@@ -89,6 +89,8 @@ def train_classification_model(model, dataloader, optimizer):
     progress_bar = tqdm(total=num_batches, desc="Train batch analizzati")
     for batch in dataloader:
         X, labels = batch
+        X = X.to(device)
+        labels = labels.to(device)
         
         optimizer.zero_grad() # Azzeramento dei gradienti
         predictions = model(X) # Passaggio del batch al modello
@@ -102,7 +104,7 @@ def train_classification_model(model, dataloader, optimizer):
 
     return train_loss / num_batches, model
 
-def val_classification_model(model, dataloader):
+def val_classification_model(model, dataloader, device, task):
 
     model.eval()
     val_loss = 0.0
@@ -110,10 +112,12 @@ def val_classification_model(model, dataloader):
     total = 0
     num_batches = len(dataloader)
 
-    progress_bar = tqdm(total=num_batches, desc="Val batch analizzati")
+    progress_bar = tqdm(total=num_batches, desc=f"{task} batch analizzati")
     with torch.no_grad():
         for batch in dataloader:
             X, labels = batch
+            X = X.to(device)
+            labels = labels.to(device)
             predictions = model(X)
             loss = classification_loss(predictions, labels)
 

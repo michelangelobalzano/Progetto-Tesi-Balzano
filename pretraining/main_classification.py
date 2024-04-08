@@ -18,7 +18,7 @@ signals = ['BVP', 'EDA', 'HR'] # Segnali considerati
 num_signals = len(signals) # Numero dei segnali
 segment_length = 240 # Lunghezza dei segmenti in time steps
 split_ratios = [70, 15, 15] # Split ratio dei segmenti per la task classification
-num_epochs = 15 # Numero epoche task classification
+num_epochs = 100 # Numero epoche task classification
 num_classes = 3 # 'negative', 'positive', 'neutral'
 num_epochs_to_save = 3 # Ogni tot epoche effettua un salvataggio del modello
 
@@ -26,13 +26,13 @@ label = 'valence' # oppure 'arousal'
 
 # Iperparametri modello
 iperparametri = {
-    'batch_size' : 256, # Dimensione di un batch di dati (in numero di segmenti)
+    'batch_size' : 32, # Dimensione di un batch di dati (in numero di segmenti)
     'masking_ratio' : 0.15, # Rapporto di valori mascherati
     'lm' : 12, # Lunghezza delle sequenze mascherate all'interno di una singola maschera
     'd_model' : 256, # Dimensione interna del modello
     'dropout' : 0.1, # 
     'num_heads' : 4, # Numero di teste del modulo di auto-attenzione 
-    'num_layers' : 3 # Numero di layer dell'encoder
+    'num_layers' : 4 # Numero di layer dell'encoder
 }
 
 # MAIN
@@ -54,9 +54,9 @@ data, labels = load_labeled_data(data_directory, signals, label)
 # Split dei dati
 print('Split dei dati in train/val/test...')
 train, train_labels, val, val_labels, test, test_labels = classification_data_split(data, labels, split_ratios, signals)
-num_train_segments = len(train[0].groupby('segment_id'))
-num_val_segments = len(val[0].groupby('segment_id'))
-num_test_segments = len(test[0].groupby('segment_id'))
+num_train_segments = len(train[signals[0]].groupby('segment_id'))
+num_val_segments = len(val[signals[0]].groupby('segment_id'))
+num_test_segments = len(test[signals[0]].groupby('segment_id'))
 print('Numero di segmenti per training: ', num_train_segments)
 print('Numero di segmenti per validation: ', num_val_segments)
 print('Numero di segmenti per test: ', num_test_segments)
@@ -72,6 +72,9 @@ print('Suddivisione dati in batch...')
 train_data = train_data.permute(1, 0, 2).to(device)
 val_data = val_data.permute(1, 0, 2).to(device)
 test_data = test_data.permute(1, 0, 2).to(device)
+train_labels = train_labels.to(device)
+val_labels = val_labels.to(device)
+test_labels = test_labels.to(device)
 train_dataset = TensorDataset(train_data, train_labels)
 val_dataset = TensorDataset(val_data, val_labels)
 test_dataset = TensorDataset(test_data, test_labels)
@@ -95,7 +98,8 @@ scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.3, patience=10, th
 # Ciclo di training
 val_losses = []
 accuracy = []
-epoch_info = {'train_losses': [], 'val_losses': [], 'accucary': []}
+epoch_info = {'train_losses': [], 'val_losses': [], 'accuracy': []}
+test_info = {}
 start_time = time.time()
 
 # Recupero data e ora da usare come nome per il salvataggio del modello
@@ -107,9 +111,9 @@ for epoch in range(num_epochs):
     print(f'\nEPOCA: {epoch + 1}')
 
     # Training
-    train_loss, model = train_classification_model(model, train_dataloader, num_signals, segment_length, iperparametri, optimizer, device)
+    train_loss, model = train_classification_model(model, train_dataloader, optimizer, device)
     # Validation
-    val_loss, val_accuracy, model = val_classification_model(model, val_dataloader)
+    val_loss, val_accuracy, model = val_classification_model(model, val_dataloader, device, task='Validation')
 
     val_losses.append(val_loss)
     accuracy.append(val_accuracy)
@@ -128,12 +132,18 @@ for epoch in range(num_epochs):
     if epoch + 1 % num_epochs_to_save == 0 and epoch > 0:
         save_partial_model(model, model_path, formatted_datetime)
 
+# Test
+test_loss, test_accuracy, model = val_classification_model(model, test_dataloader, device, task='Test')
+test_info['test_loss'] = test_loss
+test_info['test_accuracy'] = test_accuracy
+print(f"Test Loss: {test_loss}, Test Accuracy: {test_accuracy}")
+
 end_time = time.time()
 elapsed_time = end_time - start_time
 
 # Salvataggio modello e info training
 print('Salvataggio informazioni training su file...')
-save_model(model, model_path, formatted_datetime, info_path, iperparametri, epoch_info, num_epochs, elapsed_time, write_mode = 'w')
+save_model(model, model_path, formatted_datetime, info_path, iperparametri, epoch_info, num_epochs, elapsed_time, write_mode = 'w', test_info=test_info)
 
 # Stampa grafico delle loss
 losses_graph(epoch_info, save_path=f'graphs\\losses_plot_{formatted_datetime}.png')

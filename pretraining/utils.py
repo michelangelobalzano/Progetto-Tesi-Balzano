@@ -90,7 +90,7 @@ def save_partial_model(model, model_path, name):
     torch.save(model.state_dict(), model_path + name + '.pth')
 
 # Salvataggio del modello e delle info del training
-def save_model(model, model_path, name, info_path, iperparametri, epoch_info, num_epochs, elapsed_time, write_mode, new_model=True):
+def save_model(model, model_path, name, info_path, iperparametri, epoch_info, num_epochs, elapsed_time, write_mode, new_model=True, test_info=None):
     # Salvataggio pickle modello
     torch.save(model.state_dict(), model_path + name + '.pth')
     # Salvataggio info training
@@ -102,13 +102,16 @@ def save_model(model, model_path, name, info_path, iperparametri, epoch_info, nu
             for key, value in iperparametri.items():
                 writer.writerow([key, value])
         # Salvataggio loss delle epoche
-        keys = epoch_info.keys()
-        writer.writerow(keys)
+        writer.writerow(epoch_info.keys())
         for i in range(num_epochs):
             values = []
             for _, vettore in epoch_info.items():
                 values.append(vettore[i])
             writer.writerow(values)
+        # Salvataggio info test
+        if test_info is not None:
+            writer.writerow(test_info.keys())
+            writer.writerow(test_info.values())
         # Salvataggio tempi di training
         writer.writerow(["Numero epoche", num_epochs])
         writer.writerow(["Tempo tot", elapsed_time])
