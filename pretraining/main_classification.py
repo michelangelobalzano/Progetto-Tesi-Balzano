@@ -9,14 +9,18 @@ from datetime import datetime
 from data_preparation import load_labeled_data, prepare_classification_data, classification_collate_fn, classification_data_split
 from training_methods import train_pretrain_model, validate_pretrain_model
 from graphs_methods import losses_graph
+from utils import save_model, save_partial_model
 
 data_directory = 'processed_data\\' # Percorso dei dati
-model_path = 'pretraining\\models\\model_'
+load_model = False # Se caricare un modello pre-addestrato o classificare direttamente
+model_path = 'pretraining\\models\\model_' # Percorso del modello da caricare
+info_path = 'training_sessions\\training_info_' # Percorso per esportazione info training
 signals = ['BVP', 'EDA', 'HR'] # Segnali considerati
 num_signals = len(signals) # Numero dei segnali
 segment_length = 240 # Lunghezza dei segmenti in time steps
 split_ratios = [70, 15, 15] # Split ratio dei segmenti per la task classification
 num_epochs = 15 # Numero epoche task classification
+num_classes = 3 # 'negative', 'positive', 'neutral'
 
 label = 'valence' # oppure 'arousal'
 
@@ -77,8 +81,9 @@ test_dataloader = DataLoader(test_dataset, batch_size=iperparametri['batch_size'
 
 # Definizione transformer
 print('Creazione del modello...')
-model = TSTransformerClassifier(num_signals, segment_length, iperparametri, 3, device)
-model.load_state_dict(torch.load('pretraining\\models\\model_03-28_12-47.pth'))
+model = TSTransformerClassifier(num_signals, segment_length, iperparametri, num_classes, device)
+if load_model:
+    model.load_state_dict(torch.load('pretraining\\models\\model_03-28_12-47.pth'))
 model = model.to(device)
 
 # Definizione dell'ottimizzatore (AdamW)
@@ -91,6 +96,10 @@ scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.3, patience=10, th
 val_losses = []
 epoch_info = {'train_losses': [], 'val_losses': []}
 start_time = time.time()
+
+# Recupero data e ora da usare come nome per il salvataggio del modello
+current_datetime = datetime.now()
+formatted_datetime = current_datetime.strftime("%m-%d_%H-%M")
 
 for epoch in range(num_epochs):
     
@@ -109,37 +118,19 @@ for epoch in range(num_epochs):
     epoch_info['train_losses'].append(train_loss)
     epoch_info['val_losses'].append(val_loss)
 
-    '''# Controllo dell'arresto anticipato
-    if early_stopping(val_losses):
-        print("Arresto anticipato.")
-        break'''
-
     # Aggiorna lo scheduler della velocità di apprendimento in base alla loss di validazione
     scheduler.step(val_loss)
 
-    #try_model(model, val_dataloader, num_signals, segment_length, iperparametri, device)
+    # Ogni tre epoche effettua un salvataggio del modello
+    if epoch + 1 % 3 == 0 and epoch > 0:
+        save_partial_model(model, model_path, formatted_datetime)
 
 end_time = time.time()
 elapsed_time = end_time - start_time
 
-current_datetime = datetime.now()
-formatted_datetime = current_datetime.strftime("%m-%d_%H-%M")
-torch.save(model.state_dict(), model_path + formatted_datetime + '.pth') # Salvataggio del modello pre-addestrato
-
-# Salvataggio delle loss su file
-print('Salvataggio informazioni pre-training su file...')
-csv_filename = f"training_sessions\\training_info_{formatted_datetime}.csv"
-with open(csv_filename, mode='w', newline='') as file:
-    writer = csv.writer(file)
-    for key, value in iperparametri.items():
-        writer.writerow([key, value])
-    writer.writerow(["Epoch", "Train Loss", "Val Loss"])
-    for epoch, (train_loss, val_loss) in enumerate(zip(epoch_info['train_losses'], epoch_info['val_losses']), start=1):
-        writer.writerow([epoch, train_loss, val_loss])
-    writer.writerow(["Numero epoche", num_epochs])
-    writer.writerow(["Tempo tot", elapsed_time])
-    writer.writerow(["Tempo per epoca", elapsed_time / num_epochs])
-
+# Salvataggio modello e info training
+print('Salvataggio informazioni training su file...')
+save_model(model, model_path, formatted_datetime, info_path, iperparametri, epoch_info, num_epochs, elapsed_time, write_mode = 'w')
 
 # Stampa grafico delle loss
 losses_graph(epoch_info, save_path=f'graphs\\losses_plot_{formatted_datetime}.png')

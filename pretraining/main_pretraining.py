@@ -10,15 +10,17 @@ from data_preparation import load_unlabeled_data, prepare_data, pretrain_collate
 from training_methods import train_pretrain_model, validate_pretrain_model#, try_model
 from graphs_methods import losses_graph
 from utils import load_model
+from utils import save_model, save_partial_model
 
 data_directory = 'processed_data\\' # Percorso dei dati
-model_path = 'pretraining\\models\\'
+model_path = 'pretraining\\models\\model_' # Percorso del modello da caricare
+info_path = 'training_sessions\\training_info_' # Percorso per esportazione info training
 signals = ['BVP', 'EDA', 'HR'] # Segnali considerati
 num_signals = len(signals) # Numero dei segnali
 segment_length = 240 # Lunghezza dei segmenti in time steps
 split_ratios = [85, 15] # Split ratio dei segmenti per la task pretraining
-num_epochs = 15 # Numero epoche task pre-training
-model_to_load = '04-06_10-52' # Modello da caricare (usare None se si vuole fare un nuovo modello)
+num_epochs = 6 # Numero epoche task pre-training
+model_to_load = None #'04-06_10-52' # Modello da caricare (usare None se si vuole fare un nuovo modello)
 
 # Iperparametri nuovo modello (se non se ne carica uno)
 iperparametri = {
@@ -87,6 +89,10 @@ val_losses = []
 epoch_info = {'train_losses': [], 'val_losses': []}
 start_time = time.time()
 
+# Recupero data e ora da usare come nome per il salvataggio del modello
+current_datetime = datetime.now()
+formatted_datetime = current_datetime.strftime("%m-%d_%H-%M")
+
 for epoch in range(num_epochs):
     
     print(f'\nEPOCA: {epoch + 1}')
@@ -107,30 +113,24 @@ for epoch in range(num_epochs):
     # Aggiorna lo scheduler della velocità di apprendimento in base alla loss di validazione
     scheduler.step(val_loss)
 
+    # Ogni tre epoche effettua un salvataggio del modello
+    if epoch + 1 % 3 == 0 and epoch > 0:
+        save_partial_model(model, model_path, formatted_datetime)
+
 end_time = time.time()
 elapsed_time = end_time - start_time
 
-current_datetime = datetime.now()
-formatted_datetime = current_datetime.strftime("%m-%d_%H-%M")
-torch.save(model.state_dict(), model_path + 'model_' + formatted_datetime + '.pth') # Salvataggio del modello pre-addestrato
-
-# Salvataggio delle loss su file
+# Salvataggio modello e info training
 print('Salvataggio informazioni pre-training su file...')
 if model_to_load is not None:
-    csv_filename = f"training_sessions\\training_info_{model_to_load}.csv"
+    model_name = model_to_load
+    write_mode = 'a'
 else:
-    csv_filename = f"training_sessions\\training_info_{formatted_datetime}.csv"
-with open(csv_filename, mode='a', newline='') as file:
-    writer = csv.writer(file)
-    if model_to_load is None:
-        for key, value in iperparametri.items():
-            writer.writerow([key, value])
-    writer.writerow(["Epoch", "Train Loss", "Val Loss"])
-    for epoch, (train_loss, val_loss) in enumerate(zip(epoch_info['train_losses'], epoch_info['val_losses']), start=1):
-        writer.writerow([epoch, train_loss, val_loss])
-    writer.writerow(["Numero epoche", num_epochs])
-    writer.writerow(["Tempo tot", elapsed_time])
-    writer.writerow(["Tempo per epoca", elapsed_time / num_epochs])
+    model_name = formatted_datetime
+    write_mode = 'w'
+
+# Salvataggio modello e info training
+save_model(model, model_path, formatted_datetime, info_path, iperparametri, epoch_info, num_epochs, elapsed_time, write_mode = 'w')
 
 # Stampa grafico delle loss
 losses_graph(epoch_info, save_path=f'graphs\\losses_plot_{formatted_datetime}.png')

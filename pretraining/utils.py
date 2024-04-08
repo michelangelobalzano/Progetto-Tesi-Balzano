@@ -66,6 +66,7 @@ def generate_random_start_idx(num_numbers, range_start, range_end, distance):
 
     return numbers
 
+# Caricamento del modello
 def load_model(model, model_path, model_name):
     model.load_state_dict(torch.load(model_path + 'model_' + model_name + '.pth'))
     iperparametri = {}
@@ -80,3 +81,24 @@ def load_model(model, model_path, model_name):
                 break
     
     return model, iperparametri
+
+# Salvataggio del modello
+def save_partial_model(model, model_path, name):
+    torch.save(model.state_dict(), model_path + name + '.pth')
+
+# Salvataggio del modello e delle info del training
+def save_model(model, model_path, name, info_path, iperparametri, epoch_info, num_epochs, elapsed_time, write_mode):
+    torch.save(model.state_dict(), model_path + name + '.pth')
+
+    print('Salvataggio informazioni training su file...')
+    csv_filename = info_path + name + '.csv'
+    with open(csv_filename, mode=write_mode, newline='') as file:
+        writer = csv.writer(file)
+        for key, value in iperparametri.items():
+            writer.writerow([key, value])
+        writer.writerow(["Epoch", "Train Loss", "Val Loss"])
+        for epoch, (train_loss, val_loss) in enumerate(zip(epoch_info['train_losses'], epoch_info['val_losses']), start=1):
+            writer.writerow([epoch, train_loss, val_loss])
+        writer.writerow(["Numero epoche", num_epochs])
+        writer.writerow(["Tempo tot", elapsed_time])
+        writer.writerow(["Tempo per epoca", elapsed_time / num_epochs])
