@@ -3,7 +3,6 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader, TensorDataset
 from transformer import TSTransformer
 import torch
-import csv
 import time
 from datetime import datetime
 from data_preparation import load_unlabeled_data, prepare_data, pretrain_collate_fn, pretrain_data_split
@@ -19,8 +18,9 @@ signals = ['BVP', 'EDA', 'HR'] # Segnali considerati
 num_signals = len(signals) # Numero dei segnali
 segment_length = 240 # Lunghezza dei segmenti in time steps
 split_ratios = [85, 15] # Split ratio dei segmenti per la task pretraining
-num_epochs = 6 # Numero epoche task pre-training
-model_to_load = None #'04-06_10-52' # Modello da caricare (usare None se si vuole fare un nuovo modello)
+num_epochs = 1 # Numero epoche task pre-training
+model_to_load = '04-06_10-52' # Modello da caricare (usare None se si vuole fare un nuovo modello)
+num_epochs_to_save = 3 # Ogni tot epoche effettua un salvataggio del modello
 
 # Iperparametri nuovo modello (se non se ne carica uno)
 iperparametri = {
@@ -76,7 +76,16 @@ print('Creazione del modello...')
 model = TSTransformer(num_signals, segment_length, iperparametri, device)
 model = model.to(device)
 if model_to_load is not None:
-    model, iperparametri = load_model(model, model_path, model_to_load)
+    model, iperparametri = load_model(model, model_path, model_to_load, info_path)
+    model_name = model_to_load
+    write_mode = 'a'
+    new_model = False
+else:
+    current_datetime = datetime.now()
+    formatted_datetime = current_datetime.strftime("%m-%d_%H-%M")
+    model_name = formatted_datetime
+    write_mode = 'w'
+    new_model = True
 
 # Definizione dell'ottimizzatore (AdamW)
 optimizer = optim.AdamW(model.parameters(), lr=0.001)
@@ -88,10 +97,6 @@ scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.3, patience=10, th
 val_losses = []
 epoch_info = {'train_losses': [], 'val_losses': []}
 start_time = time.time()
-
-# Recupero data e ora da usare come nome per il salvataggio del modello
-current_datetime = datetime.now()
-formatted_datetime = current_datetime.strftime("%m-%d_%H-%M")
 
 for epoch in range(num_epochs):
     
@@ -114,23 +119,17 @@ for epoch in range(num_epochs):
     scheduler.step(val_loss)
 
     # Ogni tre epoche effettua un salvataggio del modello
-    if epoch + 1 % 3 == 0 and epoch > 0:
-        save_partial_model(model, model_path, formatted_datetime)
+    if (epoch + 1) % num_epochs_to_save == 0 and epoch > 0:
+        save_partial_model(model, model_path, model_name)
 
 end_time = time.time()
 elapsed_time = end_time - start_time
 
 # Salvataggio modello e info training
 print('Salvataggio informazioni pre-training su file...')
-if model_to_load is not None:
-    model_name = model_to_load
-    write_mode = 'a'
-else:
-    model_name = formatted_datetime
-    write_mode = 'w'
 
 # Salvataggio modello e info training
-save_model(model, model_path, formatted_datetime, info_path, iperparametri, epoch_info, num_epochs, elapsed_time, write_mode = 'w')
+save_model(model, model_path, model_name, info_path, iperparametri, epoch_info, num_epochs, elapsed_time, write_mode=write_mode, new_model=new_model)
 
 # Stampa grafico delle loss
-losses_graph(epoch_info, save_path=f'graphs\\losses_plot_{formatted_datetime}.png')
+losses_graph(epoch_info, save_path=f'graphs\\losses_plot_{model_name}.png')

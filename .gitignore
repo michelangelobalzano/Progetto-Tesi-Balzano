@@ -181,3 +181,6 @@ pretraining/share
 
 # Esclusione cartella salvataggio modelli
 pretraining/models
+
+# Esclusione training session info
+training_sessions/

@@ -67,10 +67,12 @@ def generate_random_start_idx(num_numbers, range_start, range_end, distance):
     return numbers
 
 # Caricamento del modello
-def load_model(model, model_path, model_name):
-    model.load_state_dict(torch.load(model_path + 'model_' + model_name + '.pth'))
+def load_model(model, model_path, model_name, info_path):
+    # Caricamento pickle modello
+    model.load_state_dict(torch.load(model_path + model_name + '.pth'))
+    # Caricamento iperparametri
     iperparametri = {}
-    with open('training_sessions\\training_info_' + model_name + '.csv', newline='') as csvfile:
+    with open(info_path + model_name + '.csv', newline='') as csvfile:
         reader = csv.reader(csvfile)
         for row_number, row in enumerate(reader):
             if row_number < 7:
@@ -84,21 +86,26 @@ def load_model(model, model_path, model_name):
 
 # Salvataggio del modello
 def save_partial_model(model, model_path, name):
+    # Salvataggio pickle modello
     torch.save(model.state_dict(), model_path + name + '.pth')
 
 # Salvataggio del modello e delle info del training
-def save_model(model, model_path, name, info_path, iperparametri, epoch_info, num_epochs, elapsed_time, write_mode):
+def save_model(model, model_path, name, info_path, iperparametri, epoch_info, num_epochs, elapsed_time, write_mode, new_model=True):
+    # Salvataggio pickle modello
     torch.save(model.state_dict(), model_path + name + '.pth')
-
-    print('Salvataggio informazioni training su file...')
+    # Salvataggio info training
     csv_filename = info_path + name + '.csv'
     with open(csv_filename, mode=write_mode, newline='') as file:
         writer = csv.writer(file)
-        for key, value in iperparametri.items():
-            writer.writerow([key, value])
+        # Salvataggio iperparametri (se è un modello nuovo)
+        if new_model:
+            for key, value in iperparametri.items():
+                writer.writerow([key, value])
+        # Salvataggio loss delle epoche
         writer.writerow(["Epoch", "Train Loss", "Val Loss"])
         for epoch, (train_loss, val_loss) in enumerate(zip(epoch_info['train_losses'], epoch_info['val_losses']), start=1):
             writer.writerow([epoch, train_loss, val_loss])
+        # Salvataggio tempi di training
         writer.writerow(["Numero epoche", num_epochs])
         writer.writerow(["Tempo tot", elapsed_time])
         writer.writerow(["Tempo per epoca", elapsed_time / num_epochs])

@@ -3,7 +3,6 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader, TensorDataset
 from transformer import TSTransformerClassifier
 import torch
-import csv
 import time
 from datetime import datetime
 from data_preparation import load_labeled_data, prepare_classification_data, classification_collate_fn, classification_data_split
@@ -21,6 +20,7 @@ segment_length = 240 # Lunghezza dei segmenti in time steps
 split_ratios = [70, 15, 15] # Split ratio dei segmenti per la task classification
 num_epochs = 15 # Numero epoche task classification
 num_classes = 3 # 'negative', 'positive', 'neutral'
+num_epochs_to_save = 3 # Ogni tot epoche effettua un salvataggio del modello
 
 label = 'valence' # oppure 'arousal'
 
@@ -122,7 +122,7 @@ for epoch in range(num_epochs):
     scheduler.step(val_loss)
 
     # Ogni tre epoche effettua un salvataggio del modello
-    if epoch + 1 % 3 == 0 and epoch > 0:
+    if epoch + 1 % num_epochs_to_save == 0 and epoch > 0:
         save_partial_model(model, model_path, formatted_datetime)
 
 end_time = time.time()
