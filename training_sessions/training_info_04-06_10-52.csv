@@ -39,3 +39,25 @@ Epoch,Train Loss,Val Loss
 Numero epoche,1
 Tempo tot,40.235126972198486
 Tempo per epoca,40.235126972198486
+t,r,a,i,n,_,l,o,s,s,e,s,",", ,v,a,l,_,l,o,s,s,e,s
+t,r,a,i,n,_,l,o,s,s,e,s,",", ,v,a,l,_,l,o,s,s,e,s
+t,r,a,i,n,_,l,o,s,s,e,s,",", ,v,a,l,_,l,o,s,s,e,s
+0,.,0,1,2,9,5,0,6,8,6,4,8,6,3,3,0,8,6,7,",", ,0,.,0,0,6,3,4,8,6,2,9,3,8,8,9,5,8,2,1,6
+Numero epoche,1
+Tempo tot,40.10793328285217
+Tempo per epoca,40.10793328285217
+t,r,a,i,n,_,l,o,s,s,e,s,",", ,v,a,l,_,l,o,s,s,e,s
+0,.,0,1,3,7,6,0,8,0,8,0,0,4,2,5,9,0,3,5,",", ,0,.,0,0,3,7,4,6,2,9,7,1,4,8,3,6,6,7,6,9
+Numero epoche,1
+Tempo tot,39.96777057647705
+Tempo per epoca,39.96777057647705
+train_losses,val_losses
+0,.,0,1,2,7,5,9,1,8,0,7,3,4,1,6,9,5,5,2,",", ,0,.,0,0,7,7,9,2,9,4,4,8,6,4,6,8,0,3,6,9
+Numero epoche,1
+Tempo tot,40.08907341957092
+Tempo per epoca,40.08907341957092
+train_losses,val_losses
+0.012853284955195996,0.003824792771289746
+Numero epoche,1
+Tempo tot,39.954105854034424
+Tempo per epoca,39.954105854034424

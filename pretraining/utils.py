@@ -102,9 +102,13 @@ def save_model(model, model_path, name, info_path, iperparametri, epoch_info, nu
             for key, value in iperparametri.items():
                 writer.writerow([key, value])
         # Salvataggio loss delle epoche
-        writer.writerow(["Epoch", "Train Loss", "Val Loss"])
-        for epoch, (train_loss, val_loss) in enumerate(zip(epoch_info['train_losses'], epoch_info['val_losses']), start=1):
-            writer.writerow([epoch, train_loss, val_loss])
+        keys = epoch_info.keys()
+        writer.writerow(keys)
+        for i in range(num_epochs):
+            values = []
+            for _, vettore in epoch_info.items():
+                values.append(vettore[i])
+            writer.writerow(values)
         # Salvataggio tempi di training
         writer.writerow(["Numero epoche", num_epochs])
         writer.writerow(["Tempo tot", elapsed_time])

@@ -80,7 +80,7 @@ def validate_pretrain_model(model, dataloader, num_signals, segment_length, iper
     return val_loss / num_batches, model
 
 # Train di un epoca
-def train_classification_model(model, dataloader, num_signals, segment_length, iperparametri, optimizer, device):
+def train_classification_model(model, dataloader, optimizer):
     
     model.train()
     train_loss = 0.0
@@ -101,6 +101,35 @@ def train_classification_model(model, dataloader, num_signals, segment_length, i
     progress_bar.close()
 
     return train_loss / num_batches, model
+
+def val_classification_model(model, dataloader):
+
+    model.eval()
+    val_loss = 0.0
+    correct = 0
+    total = 0
+    num_batches = len(dataloader)
+
+    progress_bar = tqdm(total=num_batches, desc="Val batch analizzati")
+    with torch.no_grad():
+        for batch in dataloader:
+            X, labels = batch
+            predictions = model(X)
+            loss = classification_loss(predictions, labels)
+
+            val_loss += loss.item()
+
+            _, predicted = torch.max(predictions, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+
+            progress_bar.update(1)
+    progress_bar.close()
+
+    average_loss = val_loss / num_batches
+    accuracy = correct / total
+
+    return average_loss, accuracy, model
 
 ''' 
 # Metodo per il criterio di stop anticipato

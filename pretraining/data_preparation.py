@@ -84,11 +84,11 @@ def prepare_classification_data(data, labels, num_signals, num_segments, segment
     for index, row in labels.iterrows():
         # Memorizzazione del valore della colonna nella lista del tensore
         if row[label] == 'negative':
-            prepared_labels.append(-1)
-        elif row[label] == 'positive':
-            prepared_labels.append(1)
-        elif row[label] == 'neutral':
             prepared_labels.append(0)
+        elif row[label] == 'positive':
+            prepared_labels.append(2)
+        elif row[label] == 'neutral':
+            prepared_labels.append(1)
     prepared_labels = torch.tensor(prepared_labels)
     
     return prepared_data, prepared_labels

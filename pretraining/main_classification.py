@@ -6,7 +6,7 @@ import torch
 import time
 from datetime import datetime
 from data_preparation import load_labeled_data, prepare_classification_data, classification_collate_fn, classification_data_split
-from training_methods import train_pretrain_model, validate_pretrain_model
+from training_methods import train_classification_model, val_classification_model
 from graphs_methods import losses_graph
 from utils import save_model, save_partial_model
 
@@ -94,7 +94,8 @@ scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.3, patience=10, th
 
 # Ciclo di training
 val_losses = []
-epoch_info = {'train_losses': [], 'val_losses': []}
+accuracy = []
+epoch_info = {'train_losses': [], 'val_losses': [], 'accucary': []}
 start_time = time.time()
 
 # Recupero data e ora da usare come nome per il salvataggio del modello
@@ -106,17 +107,19 @@ for epoch in range(num_epochs):
     print(f'\nEPOCA: {epoch + 1}')
 
     # Training
-    train_loss, model = train_pretrain_model(model, train_dataloader, num_signals, segment_length, iperparametri, optimizer, device)
+    train_loss, model = train_classification_model(model, train_dataloader, num_signals, segment_length, iperparametri, optimizer, device)
     # Validation
-    val_loss, model = validate_pretrain_model(model, val_dataloader, num_signals, segment_length, iperparametri, device)
+    val_loss, val_accuracy, model = val_classification_model(model, val_dataloader)
 
     val_losses.append(val_loss)
+    accuracy.append(val_accuracy)
 
-    print(f"Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss}, Val Loss: {val_loss}")
+    print(f"Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss}, Val Loss: {val_loss}, Accuracy: {val_accuracy}")
 
     # Salvataggio delle informazioni dell'epoca
     epoch_info['train_losses'].append(train_loss)
     epoch_info['val_losses'].append(val_loss)
+    epoch_info['accuracy'].append(val_accuracy)
 
     # Aggiorna lo scheduler della velocità di apprendimento in base alla loss di validazione
     scheduler.step(val_loss)
