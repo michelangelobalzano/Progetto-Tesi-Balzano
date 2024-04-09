@@ -159,28 +159,18 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-# Esclusione dei raw data
 data/
 data2/
-
-# Esclusione dei dati processati
 processed_data/
-
-# Esclusione file e cartelle ambiente virtuale preprocessing
 preprocessing/pyvenv.cfg
 preprocessing/Scripts/
 preprocessing/Include
 preprocessing/Lib
-
-# Esclusione file e cartelle ambiente virtuale pretraining
 pretraining/pyvenv.cfg
 pretraining/Scripts/
 pretraining/Include
 pretraining/Lib
 pretraining/share
-
-# Esclusione cartella salvataggio modelli
 pretraining/models
-
-# Esclusione training session info
-training_sessions/
+sessions/
+graphs/

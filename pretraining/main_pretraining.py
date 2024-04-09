@@ -6,21 +6,21 @@ import torch
 import time
 from datetime import datetime
 from data_preparation import load_unlabeled_data, prepare_data, pretrain_collate_fn, pretrain_data_split
-from training_methods import train_pretrain_model, validate_pretrain_model#, try_model
+from training_methods import train_pretrain_model, validate_pretrain_model
 from graphs_methods import losses_graph
 from utils import load_model
 from utils import save_model, save_partial_model
 
 data_directory = 'processed_data\\' # Percorso dei dati
-model_path = 'pretraining\\models\\model_' # Percorso del modello da caricare
-info_path = 'training_sessions\\training_info_' # Percorso per esportazione info training
+model_path = 'pretraining\\models\\' # Percorso del modello da caricare
+info_path = 'sessions\\' # Percorso per esportazione info training
 signals = ['BVP', 'EDA', 'HR'] # Segnali considerati
 num_signals = len(signals) # Numero dei segnali
 segment_length = 240 # Lunghezza dei segmenti in time steps
 split_ratios = [85, 15] # Split ratio dei segmenti per la task pretraining
-num_epochs = 1 # Numero epoche task pre-training
-model_to_load = '04-06_10-52' # Modello da caricare (usare None se si vuole fare un nuovo modello)
-num_epochs_to_save = 3 # Ogni tot epoche effettua un salvataggio del modello
+num_epochs = 2 # Numero epoche task pre-training
+model_to_load = None # Modello da caricare (oppure None)
+num_epochs_to_save = 3 # Ogni tot epoche effettua un salvataggio del modello (oppure None)
 
 # Iperparametri nuovo modello (se non se ne carica uno)
 iperparametri = {
@@ -118,9 +118,10 @@ for epoch in range(num_epochs):
     # Aggiorna lo scheduler della velocità di apprendimento in base alla loss di validazione
     scheduler.step(val_loss)
 
-    # Ogni tre epoche effettua un salvataggio del modello
-    if (epoch + 1) % num_epochs_to_save == 0 and epoch > 0:
-        save_partial_model(model, model_path, model_name)
+    # Ogni tot epoche effettua un salvataggio del modello
+    if num_epochs_to_save is not None:
+        if (epoch + 1) % num_epochs_to_save == 0 and epoch > 0:
+            save_partial_model(model, model_path, model_name)
 
 end_time = time.time()
 elapsed_time = end_time - start_time
@@ -129,7 +130,7 @@ elapsed_time = end_time - start_time
 print('Salvataggio informazioni pre-training su file...')
 
 # Salvataggio modello e info training
-save_model(model, model_path, model_name, info_path, iperparametri, epoch_info, num_epochs, elapsed_time, write_mode=write_mode, new_model=new_model)
+save_model(model, model_path, model_name, info_path, iperparametri, epoch_info, num_epochs, elapsed_time, task='pre-training', write_mode=write_mode, new_model=new_model)
 
 # Stampa grafico delle loss
 losses_graph(epoch_info, save_path=f'graphs\\losses_plot_{model_name}.png')

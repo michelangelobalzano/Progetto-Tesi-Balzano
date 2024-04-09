@@ -12,27 +12,28 @@ from utils import save_model, save_partial_model
 
 data_directory = 'processed_data\\' # Percorso dei dati
 load_model = False # Se caricare un modello pre-addestrato o classificare direttamente
-model_path = 'pretraining\\models\\model_' # Percorso del modello da caricare
-info_path = 'training_sessions\\training_info_' # Percorso per esportazione info training
+model_path = 'pretraining\\models\\' # Percorso del modello da caricare
+info_path = 'sessions\\' # Percorso per esportazione info training
 signals = ['BVP', 'EDA', 'HR'] # Segnali considerati
 num_signals = len(signals) # Numero dei segnali
 segment_length = 240 # Lunghezza dei segmenti in time steps
 split_ratios = [70, 15, 15] # Split ratio dei segmenti per la task classification
 num_epochs = 100 # Numero epoche task classification
 num_classes = 3 # 'negative', 'positive', 'neutral'
-num_epochs_to_save = 3 # Ogni tot epoche effettua un salvataggio del modello
+num_epochs_to_save = 3 # Ogni tot epoche effettua un salvataggio del modello (oppure None)
 
-label = 'valence' # oppure 'arousal'
+#label = 'valence'
+label = 'arousal'
 
 # Iperparametri modello
 iperparametri = {
-    'batch_size' : 32, # Dimensione di un batch di dati (in numero di segmenti)
+    'batch_size' : 256, # Dimensione di un batch di dati (in numero di segmenti)
     'masking_ratio' : 0.15, # Rapporto di valori mascherati
     'lm' : 12, # Lunghezza delle sequenze mascherate all'interno di una singola maschera
     'd_model' : 256, # Dimensione interna del modello
     'dropout' : 0.1, # 
     'num_heads' : 4, # Numero di teste del modulo di auto-attenzione 
-    'num_layers' : 4 # Numero di layer dell'encoder
+    'num_layers' : 3 # Numero di layer dell'encoder
 }
 
 # MAIN
@@ -104,7 +105,7 @@ start_time = time.time()
 
 # Recupero data e ora da usare come nome per il salvataggio del modello
 current_datetime = datetime.now()
-formatted_datetime = current_datetime.strftime("%m-%d_%H-%M")
+model_name = current_datetime.strftime("%m-%d_%H-%M")
 
 for epoch in range(num_epochs):
     
@@ -128,9 +129,10 @@ for epoch in range(num_epochs):
     # Aggiorna lo scheduler della velocità di apprendimento in base alla loss di validazione
     scheduler.step(val_loss)
 
-    # Ogni tre epoche effettua un salvataggio del modello
-    if epoch + 1 % num_epochs_to_save == 0 and epoch > 0:
-        save_partial_model(model, model_path, formatted_datetime)
+    # Ogni tot epoche effettua un salvataggio del modello
+    if num_epochs_to_save is not None:
+        if epoch + 1 % num_epochs_to_save == 0 and epoch > 0:
+            save_partial_model(model, model_path, model_name)
 
 # Test
 test_loss, test_accuracy, model = val_classification_model(model, test_dataloader, device, task='Test')
@@ -143,7 +145,7 @@ elapsed_time = end_time - start_time
 
 # Salvataggio modello e info training
 print('Salvataggio informazioni training su file...')
-save_model(model, model_path, formatted_datetime, info_path, iperparametri, epoch_info, num_epochs, elapsed_time, write_mode = 'w', test_info=test_info)
+save_model(model, model_path, model_name, info_path, iperparametri, epoch_info, num_epochs, elapsed_time, task='classification', label=label, write_mode = 'w', test_info=test_info)
 
 # Stampa grafico delle loss
-losses_graph(epoch_info, save_path=f'graphs\\losses_plot_{formatted_datetime}.png')
+losses_graph(epoch_info, save_path=f'graphs\\losses_plot_{model_name}.png')

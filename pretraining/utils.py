@@ -90,13 +90,17 @@ def save_partial_model(model, model_path, name):
     torch.save(model.state_dict(), model_path + name + '.pth')
 
 # Salvataggio del modello e delle info del training
-def save_model(model, model_path, name, info_path, iperparametri, epoch_info, num_epochs, elapsed_time, write_mode, new_model=True, test_info=None):
+def save_model(model, model_path, name, info_path, iperparametri, epoch_info, num_epochs, elapsed_time, task, label=None, write_mode='w', new_model=True, test_info=None):
     # Salvataggio pickle modello
-    torch.save(model.state_dict(), model_path + name + '.pth')
+    save_partial_model(model, model_path, name)
     # Salvataggio info training
-    csv_filename = info_path + name + '.csv'
+    csv_filename = info_path + task + '_' + name + '.csv'
     with open(csv_filename, mode=write_mode, newline='') as file:
         writer = csv.writer(file)
+        if label is not None:
+            writer.writerow(['task', task, label])
+        else:
+            writer.writerow(['task', task])
         # Salvataggio iperparametri (se è un modello nuovo)
         if new_model:
             for key, value in iperparametri.items():
