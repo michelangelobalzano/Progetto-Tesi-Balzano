@@ -8,30 +8,35 @@ from datetime import datetime
 from data_preparation import load_labeled_data, prepare_classification_data, classification_collate_fn, classification_data_split
 from training_methods import train_classification_model, val_classification_model
 from graphs_methods import losses_graph
-from utils import save_model, save_partial_model
+from utils import load_model, save_model, save_partial_model
 
-data_directory = 'processed_data\\' # Percorso dei dati
-load_model = False # Se caricare un modello pre-addestrato o classificare direttamente
-model_path = 'pretraining\\models\\' # Percorso del modello da caricare
-info_path = 'sessions\\' # Percorso per esportazione info training
+# Variabili dipendenti dal preprocessing
 signals = ['BVP', 'EDA', 'HR'] # Segnali considerati
 num_signals = len(signals) # Numero dei segnali
 segment_length = 240 # Lunghezza dei segmenti in time steps
-split_ratios = [70, 15, 15] # Split ratio dei segmenti per la task classification
-num_epochs = 100 # Numero epoche task classification
 num_classes = 3 # 'negative', 'positive', 'neutral'
+
+# Percorsi per caricamento e salvataggio dati
+data_directory = 'processed_data\\' # Percorso dei dati
+info_path = 'sessions\\' # Percorso per esportazione info training
+model_path = 'pretraining\\models\\' # Percorso del modello da caricare
+
+# Variabili per il caricamento del modello pre-addestrato
+model_to_load = '04-09_12-04' # Nome del modello da caricare (oppure None)
+
+# Variabili del training
+split_ratios = [70, 15, 15] # Split ratio dei segmenti (train/val/test)
+num_epochs = 2 # Numero epoche task classification
 num_epochs_to_save = 3 # Ogni tot epoche effettua un salvataggio del modello (oppure None)
+label = 'arousal' # Etichetta da classificare ('valence'/'arousal')
 
-#label = 'valence'
-label = 'arousal'
-
-# Iperparametri modello
+# Iperparametri modello (se non se ne carica uno)
 iperparametri = {
     'batch_size' : 256, # Dimensione di un batch di dati (in numero di segmenti)
     'masking_ratio' : 0.15, # Rapporto di valori mascherati
     'lm' : 12, # Lunghezza delle sequenze mascherate all'interno di una singola maschera
     'd_model' : 256, # Dimensione interna del modello
-    'dropout' : 0.1, # 
+    'dropout' : 0.1, # Percentuale spegnimento neuroni
     'num_heads' : 4, # Numero di teste del modulo di auto-attenzione 
     'num_layers' : 3 # Numero di layer dell'encoder
 }
@@ -86,8 +91,12 @@ test_dataloader = DataLoader(test_dataset, batch_size=iperparametri['batch_size'
 # Definizione transformer
 print('Creazione del modello...')
 model = TSTransformerClassifier(num_signals, segment_length, iperparametri, num_classes, device)
-if load_model:
-    model.load_state_dict(torch.load('pretraining\\models\\model_03-28_12-47.pth'))
+if model_to_load is not None:
+    model, _ = load_model(model, model_path, model_to_load, task='classification')
+    model_name = model_to_load
+else:
+    current_datetime = datetime.now()
+    model_name = current_datetime.strftime("%m-%d_%H-%M")
 model = model.to(device)
 
 # Definizione dell'ottimizzatore (AdamW)
@@ -102,10 +111,6 @@ accuracy = []
 epoch_info = {'train_losses': [], 'val_losses': [], 'accuracy': []}
 test_info = {}
 start_time = time.time()
-
-# Recupero data e ora da usare come nome per il salvataggio del modello
-current_datetime = datetime.now()
-model_name = current_datetime.strftime("%m-%d_%H-%M")
 
 for epoch in range(num_epochs):
     

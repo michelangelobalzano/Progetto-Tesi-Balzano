@@ -67,32 +67,40 @@ def generate_random_start_idx(num_numbers, range_start, range_end, distance):
     return numbers
 
 # Caricamento del modello
-def load_model(model, model_path, model_name, info_path):
-    # Caricamento pickle modello
-    model.load_state_dict(torch.load(model_path + model_name + '.pth'))
-    # Caricamento iperparametri
+def load_model(model, model_path, model_name, task, info_path=None):
     iperparametri = {}
-    with open(info_path + model_name + '.csv', newline='') as csvfile:
-        reader = csv.reader(csvfile)
-        for row_number, row in enumerate(reader):
-            if row_number < 7:
-                chiave = row[0]
-                valore = int(row[1]) if row[1].isdigit() else float(row[1])
-                iperparametri[chiave] = valore
-            else:
-                break
+    if task == 'classification': # Caricamento di un modello preaddestrato per classificazione
+        # Esclusione dell'output layer
+        stato_modello = torch.load(model_path + 'pretraining_' + model_name + '.pth')
+        output_layer_keys = ['output_layer.weight', 'output_layer.bias']
+        stato_modello = {key: value for key, value in stato_modello.items() if key not in output_layer_keys}
+        # Caricamento del modello senza output layer
+        model.load_state_dict(stato_modello, strict=False)
+    elif task == 'pretraining': # Caricamento per continuare pretraining
+        # Caricamento del modello
+        model.load_state_dict(torch.load(model_path + 'pretraining_' + model_name + '.pth')).
+        # Caricamento degli iperparametri
+        with open(info_path + 'pretraining_' + model_name + '.csv', newline='') as csvfile:
+            reader = csv.reader(csvfile)
+            for row_number, row in enumerate(reader):
+                if 1 <= row_number <= 7:
+                    chiave = row[0]
+                    valore = int(row[1]) if row[1].isdigit() else float(row[1])
+                    iperparametri[chiave] = valore
+                elif row_number > 7:
+                    break
     
     return model, iperparametri
 
 # Salvataggio del modello
-def save_partial_model(model, model_path, name):
+def save_partial_model(model, model_path, name, task):
     # Salvataggio pickle modello
-    torch.save(model.state_dict(), model_path + name + '.pth')
+    torch.save(model.state_dict(), model_path + task + '_' + name + '.pth')
 
 # Salvataggio del modello e delle info del training
 def save_model(model, model_path, name, info_path, iperparametri, epoch_info, num_epochs, elapsed_time, task, label=None, write_mode='w', new_model=True, test_info=None):
     # Salvataggio pickle modello
-    save_partial_model(model, model_path, name)
+    save_partial_model(model, model_path, name, task)
     # Salvataggio info training
     csv_filename = info_path + task + '_' + name + '.csv'
     with open(csv_filename, mode=write_mode, newline='') as file:
@@ -100,6 +108,8 @@ def save_model(model, model_path, name, info_path, iperparametri, epoch_info, nu
         if label is not None:
             writer.writerow(['task', task, label])
         else:
+            if not new_model:
+                writer.writerow([])
             writer.writerow(['task', task])
         # Salvataggio iperparametri (se è un modello nuovo)
         if new_model:

@@ -14,7 +14,7 @@ def classification_loss(predictions, labels):
 
     return criterion(predictions, labels)
 
-# Calcolo della loss per il pre-training con masked prediction
+# Calcolo della loss per il pretraining con masked prediction
 def masked_prediction_loss(predictions, true, masks):
 
     criterion = nn.MSELoss(reduction='mean')

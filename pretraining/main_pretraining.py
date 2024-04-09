@@ -8,18 +8,24 @@ from datetime import datetime
 from data_preparation import load_unlabeled_data, prepare_data, pretrain_collate_fn, pretrain_data_split
 from training_methods import train_pretrain_model, validate_pretrain_model
 from graphs_methods import losses_graph
-from utils import load_model
-from utils import save_model, save_partial_model
+from utils import load_model, save_model, save_partial_model
 
-data_directory = 'processed_data\\' # Percorso dei dati
-model_path = 'pretraining\\models\\' # Percorso del modello da caricare
-info_path = 'sessions\\' # Percorso per esportazione info training
+# Variabili dipendenti dal preprocessing
 signals = ['BVP', 'EDA', 'HR'] # Segnali considerati
 num_signals = len(signals) # Numero dei segnali
 segment_length = 240 # Lunghezza dei segmenti in time steps
-split_ratios = [85, 15] # Split ratio dei segmenti per la task pretraining
-num_epochs = 2 # Numero epoche task pre-training
-model_to_load = None # Modello da caricare (oppure None)
+
+# Percorsi per caricamento e salvataggio dati
+data_directory = 'processed_data\\' # Percorso dei dati
+info_path = 'sessions\\' # Percorso per esportazione info training
+model_path = 'pretraining\\models\\' # Percorso del modello da caricare
+
+# Variabili per il caricamento del modello dal quale continuare il pretraining
+model_to_load = '04-09_12-04' # Modello da caricare (oppure None)
+
+# Variabili del training
+split_ratios = [85, 15] # Split ratio dei segmenti (train/val)
+num_epochs = 2 # Numero epoche task pretraining
 num_epochs_to_save = 3 # Ogni tot epoche effettua un salvataggio del modello (oppure None)
 
 # Iperparametri nuovo modello (se non se ne carica uno)
@@ -27,8 +33,8 @@ iperparametri = {
     'batch_size' : 256, # Dimensione di un batch di dati (in numero di segmenti)
     'masking_ratio' : 0.15, # Rapporto di valori mascherati
     'lm' : 12, # Lunghezza delle sequenze mascherate all'interno di una singola maschera
-    'd_model' : 256, #
-    'dropout' : 0.1, #
+    'd_model' : 256, # Dimensione interna del modello
+    'dropout' : 0.1, # Percentuale spegnimento neuroni
     'num_heads' : 4, # Numero di teste del modulo di auto-attenzione 
     'num_layers' : 3 # Numero di layer dell'encoder
 }
@@ -76,7 +82,7 @@ print('Creazione del modello...')
 model = TSTransformer(num_signals, segment_length, iperparametri, device)
 model = model.to(device)
 if model_to_load is not None:
-    model, iperparametri = load_model(model, model_path, model_to_load, info_path)
+    model, iperparametri = load_model(model, model_path, model_to_load, task='pretraining', info_path=info_path)
     model_name = model_to_load
     write_mode = 'a'
     new_model = False
@@ -127,10 +133,10 @@ end_time = time.time()
 elapsed_time = end_time - start_time
 
 # Salvataggio modello e info training
-print('Salvataggio informazioni pre-training su file...')
+print('Salvataggio informazioni pretraining su file...')
 
 # Salvataggio modello e info training
-save_model(model, model_path, model_name, info_path, iperparametri, epoch_info, num_epochs, elapsed_time, task='pre-training', write_mode=write_mode, new_model=new_model)
+save_model(model, model_path, model_name, info_path, iperparametri, epoch_info, num_epochs, elapsed_time, task='pretraining', write_mode=write_mode, new_model=new_model)
 
 # Stampa grafico delle loss
 losses_graph(epoch_info, save_path=f'graphs\\losses_plot_{model_name}.png')
