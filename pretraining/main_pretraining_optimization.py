@@ -8,14 +8,12 @@ from data_preparation import load_unlabeled_data, prepare_data, pretrain_collate
 from training_methods import train_pretrain_model, validate_pretrain_model
 
 def objective(trial, iperparametri, train_dataset, val_dataset, device):
-    # Campionamento degli iperparametri
     batch_size = trial.suggest_categorical('batch_size', [32, 64, 128, 256])
     d_model = trial.suggest_categorical('d_model', [32, 64, 128, 256])
     dropout = trial.suggest_float('dropout', 0.1, 0.5)
     num_heads = trial.suggest_categorical('num_heads', [2, 4, 8])
     num_layers = trial.suggest_int('num_layers', 2, 6)
     
-    # Aggiornamento degli iperparametri nel dizionario
     iperparametri['batch_size'] = batch_size
     iperparametri['d_model'] = d_model
     iperparametri['dropout'] = dropout

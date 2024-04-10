@@ -35,10 +35,10 @@ iperparametri = {
     'batch_size' : 256, # Dimensione di un batch di dati (in numero di segmenti)
     'masking_ratio' : 0.15, # Rapporto di valori mascherati
     'lm' : 12, # Lunghezza delle sequenze mascherate all'interno di una singola maschera
-    'd_model' : 256, # Dimensione interna del modello
+    'd_model' : 128, # Dimensione interna del modello
     'dropout' : 0.1, # Percentuale spegnimento neuroni
-    'num_heads' : 4, # Numero di teste del modulo di auto-attenzione 
-    'num_layers' : 3 # Numero di layer dell'encoder
+    'num_heads' : 8, # Numero di teste del modulo di auto-attenzione 
+    'num_layers' : 5 # Numero di layer dell'encoder
 }
 
 # MAIN
@@ -119,7 +119,7 @@ for epoch in range(num_epochs):
     # Training
     train_loss, model = train_classification_model(model, train_dataloader, optimizer, device)
     # Validation
-    val_loss, val_accuracy, model = val_classification_model(model, val_dataloader, device, task='Validation')
+    val_loss, val_accuracy, model = val_classification_model(model, val_dataloader, device, task='validation')
 
     val_losses.append(val_loss)
     accuracy.append(val_accuracy)
@@ -140,7 +140,7 @@ for epoch in range(num_epochs):
             save_partial_model(model, model_path, model_name, task='classification')
 
 # Test
-test_loss, test_accuracy, model = val_classification_model(model, test_dataloader, device, task='Test')
+test_loss, test_accuracy, model = val_classification_model(model, test_dataloader, device, task='testing')
 test_info['test_loss'] = test_loss
 test_info['test_accuracy'] = test_accuracy
 print(f"Test Loss: {test_loss}, Test Accuracy: {test_accuracy}")
