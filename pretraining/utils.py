@@ -78,7 +78,7 @@ def load_model(model, model_path, model_name, task, info_path=None):
         model.load_state_dict(stato_modello, strict=False)
     elif task == 'pretraining': # Caricamento per continuare pretraining
         # Caricamento del modello
-        model.load_state_dict(torch.load(model_path + 'pretraining_' + model_name + '.pth')).
+        model.load_state_dict(torch.load(model_path + 'pretraining_' + model_name + '.pth'))
         # Caricamento degli iperparametri
         with open(info_path + 'pretraining_' + model_name + '.csv', newline='') as csvfile:
             reader = csv.reader(csvfile)

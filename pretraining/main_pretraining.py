@@ -21,11 +21,11 @@ info_path = 'sessions\\' # Percorso per esportazione info training
 model_path = 'pretraining\\models\\' # Percorso del modello da caricare
 
 # Variabili per il caricamento del modello dal quale continuare il pretraining
-model_to_load = '04-09_12-04' # Modello da caricare (oppure None)
+model_to_load = None # Modello da caricare (oppure None)
 
 # Variabili del training
 split_ratios = [85, 15] # Split ratio dei segmenti (train/val)
-num_epochs = 2 # Numero epoche task pretraining
+num_epochs = 10 # Numero epoche task pretraining
 num_epochs_to_save = 3 # Ogni tot epoche effettua un salvataggio del modello (oppure None)
 
 # Iperparametri nuovo modello (se non se ne carica uno)
@@ -127,7 +127,7 @@ for epoch in range(num_epochs):
     # Ogni tot epoche effettua un salvataggio del modello
     if num_epochs_to_save is not None:
         if (epoch + 1) % num_epochs_to_save == 0 and epoch > 0:
-            save_partial_model(model, model_path, model_name)
+            save_partial_model(model, model_path, model_name, task='pretraining')
 
 end_time = time.time()
 elapsed_time = end_time - start_time
