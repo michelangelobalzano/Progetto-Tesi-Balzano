@@ -162,13 +162,16 @@ class MyEncoderLayer(nn.modules.Module):
         self.activation = F.gelu
 
     def forward(self, data, src_mask=None, is_causal=False, src_key_padding_mask=None) -> Tensor:
-        
+        # Self-attention
         data2 = self.self_attn(data, data, data)[0]
+        # Add & Norm
         data = data + self.dropout1(data2)  # [segment_length, batch_size, d_model]
         data = data.permute(1, 2, 0)  # [batch_size, d_model, segment_length]
         data = self.norm1(data)
         data = data.permute(2, 0, 1)  # [segment_length, batch_size, d_model]
+        # Feed-forward
         data2 = self.linear2(self.dropout(self.activation(self.linear1(data))))
+        # Add & Norm
         data = data + self.dropout2(data2)  # [segment_length, batch_size, d_model]
         data = data.permute(1, 2, 0)  # [batch_size, d_model, segment_length]
         data = self.norm2(data)
@@ -233,7 +236,7 @@ class TSTransformerClassifier(nn.Module):
         self.project_inp = nn.Linear(self.num_signals, self.d_model)
         self.pos_enc = PositionalEncoding(segment_length, self.d_model, self.dropout, self.device)
         encoder_layer = MyEncoderLayer(self.d_model, self.num_heads, self.d_model, self.dropout)
-        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, self.num_layers)
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, self.num_layers, mask_check=False, enable_nested_tensor=False)
         self.output_layer = nn.Linear(self.d_model * segment_length, num_classes)
         self.act = F.gelu
         self.dropout1 = nn.Dropout(self.dropout)

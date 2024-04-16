@@ -15,14 +15,18 @@ def classification_loss(predictions, labels):
     return criterion(predictions, labels)
 
 # Calcolo della loss per il pretraining con masked prediction
-def masked_prediction_loss(predictions, true, masks):
+def pretraining_loss(predictions, true, masks):
 
     criterion = nn.MSELoss(reduction='mean')
     
     masked_true = torch.masked_select(true, masks)
     masked_predictions = torch.masked_select(predictions, masks)
 
-    return criterion(masked_predictions, masked_true)
+    mse_loss = criterion(masked_predictions, masked_true)
+
+    rmse_loss = torch.sqrt(mse_loss)
+
+    return rmse_loss
 
 # Calcolo della loss per la classificazione
 def cross_entropy_loss(self, inp, target):
@@ -44,7 +48,7 @@ def train_pretrain_model(model, dataloader, num_signals, segment_length, iperpar
                                iperparametri['lm'], num_signals, segment_length, device) # Generazione delle maschere
         masked_batch = batch * masks # Applicazione della maschera
         predictions = model(masked_batch) # Passaggio del batch al modello
-        loss = masked_prediction_loss(predictions, batch, masks) # Calcolo della loss
+        loss = pretraining_loss(predictions, batch, masks) # Calcolo della loss
         loss.backward() # Aggiornamento dei pesi
         optimizer.step()
         train_loss += loss.item() # Accumulo della loss
@@ -70,7 +74,7 @@ def validate_pretrain_model(model, dataloader, num_signals, segment_length, iper
                                    iperparametri['lm'], num_signals, segment_length, device) # Generazione delle maschere
             masked_batch = batch * masks # Applicazione della maschera
             predictions = model(masked_batch) # Passaggio del batch al modello
-            loss = masked_prediction_loss(predictions, batch, masks) # Calcolo della loss
+            loss = pretraining_loss(predictions, batch, masks) # Calcolo della loss
             val_loss += loss.item() # Accumulo della loss
 
             progress_bar.update(1)
