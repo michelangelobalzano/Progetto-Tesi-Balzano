@@ -126,11 +126,11 @@ class Transformer(nn.Module):
     
 '''
 
-class PositionalEncoding(nn.Module):
+class FixedPositionalEncoding(nn.Module):
     
     def __init__(self, segment_length, d_model, dropout, device, scale_factor=1.0):
         
-        super(PositionalEncoding, self).__init__()
+        super(FixedPositionalEncoding, self).__init__()
         self.dropout = nn.Dropout(dropout)
 
         self.pe = torch.zeros(segment_length, d_model).to(device)
@@ -142,6 +142,19 @@ class PositionalEncoding(nn.Module):
 
     def forward(self, x):
         
+        x = x + self.pe[:x.size(0), :]
+        return self.dropout(x)
+    
+class LearnablePositionalEncoding(nn.Module):
+
+    def __init__(self, segment_length, d_model, dropout):
+        super(LearnablePositionalEncoding, self).__init__()
+        self.dropout = nn.Dropout(p=dropout)
+        self.pe = nn.Parameter(torch.empty(segment_length, 1, d_model))
+        nn.init.uniform_(self.pe, -0.02, 0.02)
+
+    def forward(self, x):
+
         x = x + self.pe[:x.size(0), :]
         return self.dropout(x)
 
@@ -183,7 +196,7 @@ class MyEncoderLayer(nn.modules.Module):
         return data
 
 class TSTransformer(nn.Module):
-    def __init__(self, num_signals, segment_length, iperparametri, device):
+    def __init__(self, num_signals, segment_length, iperparametri, device, pe_type='leanable'):
         super(TSTransformer, self).__init__()
 
         self.num_signals = num_signals
@@ -195,7 +208,10 @@ class TSTransformer(nn.Module):
         self.device = device
 
         self.project_inp = nn.Linear(self.num_signals, self.d_model)
-        self.pos_enc = PositionalEncoding(segment_length, self.d_model, self.dropout, self.device)
+        if pe_type == 'learnable':
+            self.pos_enc = LearnablePositionalEncoding(self.segment_length, self.d_model, self.dropout)
+        elif pe_type == 'fixed':
+            self.pos_enc = FixedPositionalEncoding(self.segment_length, self.d_model, self.dropout, self.device)
         encoder_layer = MyEncoderLayer(self.d_model, self.num_heads, self.d_model, self.dropout)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, self.num_layers)
         self.output_layer = nn.Linear(self.d_model, self.num_signals)
