@@ -8,7 +8,7 @@ from datetime import datetime
 from data_preparation import load_unlabeled_data, prepare_data, pretrain_collate_fn, pretrain_data_split
 from training_methods import train_pretrain_model, validate_pretrain_model
 from graphs_methods import losses_graph
-from utils import load_model, save_model, save_partial_model
+from utils import load_model, save_session_info, save_model, read_old_session_info
 
 # Variabili dipendenti dal preprocessing
 signals = ['BVP', 'EDA', 'HR'] # Segnali considerati
@@ -24,9 +24,10 @@ model_path = 'pretraining\\models\\' # Percorso del modello da caricare
 model_to_load = None # Modello da caricare (oppure None)
 
 # Variabili del training
+task = 'pretraining'
 split_ratios = [85, 15] # Split ratio dei segmenti (train/val)
-num_epochs = 10 # Numero epoche task pretraining
-num_epochs_to_save = 3 # Ogni tot epoche effettua un salvataggio del modello (oppure None)
+num_epochs = 100 # Numero epoche task pretraining
+num_epochs_to_save = 5 # Ogni tot epoche effettua un salvataggio del modello (oppure None)
 
 # Iperparametri nuovo modello (se non se ne carica uno)
 iperparametri = {
@@ -82,20 +83,18 @@ print('Creazione del modello...')
 model = TSTransformer(num_signals, segment_length, iperparametri, device)
 model = model.to(device)
 if model_to_load is not None:
-    model, iperparametri = load_model(model, model_path, model_to_load, task='pretraining', info_path=info_path)
+    model, iperparametri = load_model(model, model_path, model_to_load, task, info_path=info_path)
     model_name = model_to_load
-    write_mode = 'a'
     new_model = False
+    old_session_info = read_old_session_info(model_name, info_path, task)
 else:
     current_datetime = datetime.now()
-    formatted_datetime = current_datetime.strftime("%m-%d_%H-%M")
-    model_name = formatted_datetime
-    write_mode = 'w'
+    model_name = current_datetime.strftime("%m-%d_%H-%M")
     new_model = True
+    old_session_info = None
 
 # Definizione dell'ottimizzatore (AdamW)
 optimizer = optim.AdamW(model.parameters(), lr=0.001)
-
 # Definizione dello scheduler di apprendimento
 scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.3, patience=10, threshold=1e-4, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-8)
 
@@ -127,7 +126,12 @@ for epoch in range(num_epochs):
     # Ogni tot epoche effettua un salvataggio del modello
     if num_epochs_to_save is not None:
         if (epoch + 1) % num_epochs_to_save == 0 and epoch > 0:
-            save_partial_model(model, model_path, model_name, task='pretraining')
+            now = time.time()
+            elapsed_time = now - start_time
+            save_session_info(model_name, info_path, iperparametri, 
+                              epoch_info, epoch+1, elapsed_time, 
+                              task, old_session_info=old_session_info)
+            save_model(model, model_path, model_name, task)
 
 end_time = time.time()
 elapsed_time = end_time - start_time
@@ -136,7 +140,10 @@ elapsed_time = end_time - start_time
 print('Salvataggio informazioni pretraining su file...')
 
 # Salvataggio modello e info training
-save_model(model, model_path, model_name, info_path, iperparametri, epoch_info, num_epochs, elapsed_time, task='pretraining', write_mode=write_mode, new_model=new_model)
+save_session_info(model_name, info_path, iperparametri, 
+                  epoch_info, num_epochs, elapsed_time, 
+                  task, old_session_info=old_session_info)
+save_model(model, model_path, model_name, task)
 
 # Stampa grafico delle loss
 losses_graph(epoch_info, save_path=f'graphs\\losses_plot_{model_name}.png')

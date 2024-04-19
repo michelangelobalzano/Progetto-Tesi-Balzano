@@ -8,7 +8,7 @@ from datetime import datetime
 from data_preparation import load_labeled_data, prepare_classification_data, classification_collate_fn, classification_data_split
 from training_methods import train_classification_model, val_classification_model
 from graphs_methods import losses_graph
-from utils import load_model, save_model, save_partial_model
+from utils import load_model, save_session_info, save_model, read_old_session_info
 
 # Variabili dipendenti dal preprocessing
 signals = ['BVP', 'EDA', 'HR'] # Segnali considerati
@@ -22,12 +22,14 @@ info_path = 'sessions\\' # Percorso per esportazione info training
 model_path = 'pretraining\\models\\' # Percorso del modello da caricare
 
 # Variabili per il caricamento del modello pre-addestrato
-model_to_load = '04-10_10-19' # Nome del modello da caricare (oppure None)
+model_to_load = '04-19_12-06' # Nome del modello da caricare (oppure None)
+old_task = 'classification' # Task modello da caricare ('pretraining' / 'classification')
 
 # Variabili del training
+task = 'classification'
 split_ratios = [70, 15, 15] # Split ratio dei segmenti (train/val/test)
-num_epochs = 100 # Numero epoche task classification
-num_epochs_to_save = 3 # Ogni tot epoche effettua un salvataggio del modello (oppure None)
+num_epochs = 10 # Numero epoche task classification
+num_epochs_to_save = 5 # Ogni tot epoche effettua un salvataggio del modello (oppure None)
 label = 'valence' # Etichetta da classificare ('valence'/'arousal')
 
 # Iperparametri modello (se non se ne carica uno)
@@ -91,13 +93,17 @@ test_dataloader = DataLoader(test_dataset, batch_size=iperparametri['batch_size'
 # Definizione transformer
 print('Creazione del modello...')
 model = TSTransformerClassifier(num_signals, segment_length, iperparametri, num_classes, device)
+model = model.to(device)
 if model_to_load is not None:
-    model, _ = load_model(model, model_path, model_to_load, task='classification')
+    model, _ = load_model(model, model_path, model_to_load, task, old_task=old_task)
     model_name = model_to_load
+    new_model = False
+    old_session_info = read_old_session_info(model_name, info_path, task)
 else:
     current_datetime = datetime.now()
     model_name = current_datetime.strftime("%m-%d_%H-%M")
-model = model.to(device)
+    new_model = True
+    old_session_info = None
 
 # Definizione dell'ottimizzatore (AdamW)
 optimizer = optim.AdamW(model.parameters(), lr=0.001)
@@ -136,8 +142,13 @@ for epoch in range(num_epochs):
 
     # Ogni tot epoche effettua un salvataggio del modello
     if num_epochs_to_save is not None:
-        if epoch + 1 % num_epochs_to_save == 0 and epoch > 0:
-            save_partial_model(model, model_path, model_name, task='classification')
+        if (epoch + 1) % num_epochs_to_save == 0 and epoch > 0:
+            now = time.time()
+            elapsed_time = now - start_time
+            save_session_info(model_name, info_path, iperparametri, 
+                              epoch_info, epoch+1, elapsed_time, 
+                              task, old_session_info=old_session_info)
+            save_model(model, model_path, model_name, task)
 
 # Test
 test_loss, test_accuracy, model = val_classification_model(model, test_dataloader, device, task='testing')
@@ -150,7 +161,10 @@ elapsed_time = end_time - start_time
 
 # Salvataggio modello e info training
 print('Salvataggio informazioni training su file...')
-save_model(model, model_path, model_name, info_path, iperparametri, epoch_info, num_epochs, elapsed_time, task='classification', label=label, write_mode = 'w', test_info=test_info)
+save_session_info(model_name, info_path, iperparametri, 
+                  epoch_info, num_epochs, elapsed_time, 
+                  task, label, test_info, old_session_info=old_session_info)
+save_model(model, model_path, model_name, task)
 
 # Stampa grafico delle loss
 losses_graph(epoch_info, save_path=f'graphs\\losses_plot_{model_name}.png')

@@ -1,7 +1,8 @@
+from typing import Optional
 import torch
 from torch import nn, Tensor
 import torch.nn.functional as F
-from torch.nn.modules import MultiheadAttention, Linear, Dropout, BatchNorm1d, TransformerEncoderLayer
+from torch.nn.modules import MultiheadAttention, Linear, Dropout, BatchNorm1d
 import math
 '''
 class PositionalEncoding(nn.Module):
@@ -161,9 +162,11 @@ class MyEncoderLayer(nn.modules.Module):
 
         self.activation = F.gelu
 
-    def forward(self, data, src_mask=None, is_causal=False, src_key_padding_mask=None) -> Tensor:
+    def forward(self, data: Tensor, src_mask: Optional[Tensor] = None,
+                src_key_padding_mask: Optional[Tensor] = None, is_causal: Optional[bool] = None) -> Tensor:
+        
         # Self-attention
-        data2 = self.self_attn(data, data, data)[0]
+        data2 = self.self_attn(data, data, data, attn_mask=src_mask, key_padding_mask=src_key_padding_mask, is_causal=is_causal)[0]
         # Add & Norm
         data = data + self.dropout1(data2)  # [segment_length, batch_size, d_model]
         data = data.permute(1, 2, 0)  # [batch_size, d_model, segment_length]
@@ -194,7 +197,7 @@ class TSTransformer(nn.Module):
         self.project_inp = nn.Linear(self.num_signals, self.d_model)
         self.pos_enc = PositionalEncoding(segment_length, self.d_model, self.dropout, self.device)
         encoder_layer = MyEncoderLayer(self.d_model, self.num_heads, self.d_model, self.dropout)
-        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, self.num_layers, mask_check=False, enable_nested_tensor=False)
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, self.num_layers)
         self.output_layer = nn.Linear(self.d_model, self.num_signals)
         self.act = F.gelu
         self.dropout1 = nn.Dropout(self.dropout)
@@ -205,17 +208,13 @@ class TSTransformer(nn.Module):
         inp = data.permute(2, 0, 1) # [segment_length, batch_size, num_signals]
         # Moltiplicazione per la redice quadrata di d_model per scalare l'input
         # come descritto nel paper "Attention is All You Need"
-        inp = self.project_inp(inp) * math.sqrt(self.d_model)
+        inp = self.project_inp(inp) * math.sqrt(self.d_model) # [segment_length, batch_size, d_model]
         inp = self.pos_enc(inp) # Aggiunta del positional encoding
-        output = self.transformer_encoder(inp) # Layer di encoder
-        # [segment_length, batch_size, d_model]
+        output = self.transformer_encoder(inp) # [segment_length, batch_size, d_model]
         output = self.act(output) # Funzione di attivazione
         output = output.permute(1, 0, 2)  # [batch_size, segment_length, d_model]
         output = self.dropout1(output) # Dropout
-        
-        
-        output = self.output_layer(output) # Layer di output
-        # [batch_size, segment_length, num_signals]
+        output = self.output_layer(output) # [batch_size, segment_length, num_signals]
         output = output.permute(0, 2, 1) # [batch_size, num_signals, segment_length]
 
         return output # [batch_size, num_signals, segment_length]

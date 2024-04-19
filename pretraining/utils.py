@@ -67,66 +67,84 @@ def generate_random_start_idx(num_numbers, range_start, range_end, distance):
     return numbers
 
 # Caricamento del modello
-def load_model(model, model_path, model_name, task, info_path=None):
+def load_model(model, model_path, model_name, task, info_path=None, old_task=None):
     iperparametri = {}
     if task == 'classification': # Caricamento di un modello preaddestrato per classificazione
-        # Esclusione dell'output layer
-        stato_modello = torch.load(model_path + 'pretraining_' + model_name + '.pth')
-        output_layer_keys = ['output_layer.weight', 'output_layer.bias']
-        stato_modello = {key: value for key, value in stato_modello.items() if key not in output_layer_keys}
+        stato_modello = torch.load(model_path + task + '_' + model_name + '.pth')
+        # Eliminazione output layer
+        if old_task == 'pretraining':
+            output_layer_keys = ['output_layer.weight', 'output_layer.bias']
+            stato_modello = {key: value for key, value in stato_modello.items() if key not in output_layer_keys}
         # Caricamento del modello senza output layer
         model.load_state_dict(stato_modello, strict=False)
     elif task == 'pretraining': # Caricamento per continuare pretraining
         # Caricamento del modello
-        model.load_state_dict(torch.load(model_path + 'pretraining_' + model_name + '.pth'))
+        model.load_state_dict(torch.load(model_path + task + '_' + model_name + '.pth'))
         # Caricamento degli iperparametri
         with open(info_path + 'pretraining_' + model_name + '.csv', newline='') as csvfile:
             reader = csv.reader(csvfile)
             for row_number, row in enumerate(reader):
-                if 1 <= row_number <= 7:
+                if 2 <= row_number <= 8:
                     chiave = row[0]
                     valore = int(row[1]) if row[1].isdigit() else float(row[1])
                     iperparametri[chiave] = valore
-                elif row_number > 7:
+                elif row_number > 8:
                     break
     
     return model, iperparametri
 
 # Salvataggio del modello
-def save_partial_model(model, model_path, name, task):
+def save_model(model, model_path, name, task):
     # Salvataggio pickle modello
     torch.save(model.state_dict(), model_path + task + '_' + name + '.pth')
 
-# Salvataggio del modello e delle info del training
-def save_model(model, model_path, name, info_path, iperparametri, epoch_info, num_epochs, elapsed_time, task, label=None, write_mode='w', new_model=True, test_info=None):
-    # Salvataggio pickle modello
-    save_partial_model(model, model_path, name, task)
-    # Salvataggio info training
+def save_session_info(name, info_path, iperparametri, 
+                      epoch_info, num_epochs, elapsed_time, 
+                      task, label=None, test_info=None, old_session_info=None):
     csv_filename = info_path + task + '_' + name + '.csv'
-    with open(csv_filename, mode=write_mode, newline='') as file:
+    # Salvataggio info sessione
+    with open(csv_filename, mode='w', newline='') as file:
         writer = csv.writer(file)
-        if label is not None:
-            writer.writerow(['task', task, label])
+        # Riscrittura salvataggio info sessione vecchia
+        if old_session_info is not None:
+            writer.writerows(old_session_info)
+            writer.writerow([])
         else:
-            if not new_model:
-                writer.writerow([])
-            writer.writerow(['task', task])
-        # Salvataggio iperparametri (se è un modello nuovo)
-        if new_model:
+            # Nome task
+            if label is not None:
+                writer.writerow([f'TASK: {task} of {label}'])
+            else:
+                writer.writerow([f'TASK: {task}'])
+            # Iperparametri
+            writer.writerow(['IPERPARAMETRI:'])
             for key, value in iperparametri.items():
                 writer.writerow([key, value])
-        # Salvataggio loss delle epoche
+        # Loss training e validation
         writer.writerow(epoch_info.keys())
         for i in range(num_epochs):
             values = []
             for _, vettore in epoch_info.items():
                 values.append(vettore[i])
             writer.writerow(values)
-        # Salvataggio info test
+        # Loss testing (solo per classificazione)
         if test_info is not None:
             writer.writerow(test_info.keys())
             writer.writerow(test_info.values())
-        # Salvataggio tempi di training
+        # Tempi sessione
         writer.writerow(["Numero epoche", num_epochs])
         writer.writerow(["Tempo tot", elapsed_time])
         writer.writerow(["Tempo per epoca", elapsed_time / num_epochs])
+
+# Determina la riga di partenza per scrivere il salvataggio di un modello pre-caricato
+def start_row_idx(name, info_path, task):
+    csv_filename = info_path + task + '_' + name + '.csv'
+    with open(csv_filename, 'r', newline='') as file:
+        reader = csv.reader(file)
+        return len(list(reader))
+    
+# Legge il contenuto di un salvataggio
+def read_old_session_info(name, path, task):
+    csv_filename = path + task + '_' + name + '.csv'
+    with open(csv_filename, 'r', newline='') as file:
+        reader = csv.reader(file)
+        return list(reader)

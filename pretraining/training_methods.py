@@ -14,11 +14,12 @@ def classification_loss(predictions, labels):
 
     return criterion(predictions, labels)
 
-# Calcolo della loss per il pretraining con masked prediction
+# Calcolo della loss per le soli sezioni mascherate
 def pretraining_loss(predictions, true, masks):
 
     criterion = nn.MSELoss(reduction='mean')
     
+    masks = ~masks # Logica maschera inversa: 1 = calcolare loss, 0 = non calcolare loss
     masked_true = torch.masked_select(true, masks)
     masked_predictions = torch.masked_select(predictions, masks)
 
@@ -27,11 +28,6 @@ def pretraining_loss(predictions, true, masks):
     rmse_loss = torch.sqrt(mse_loss)
 
     return rmse_loss
-
-# Calcolo della loss per la classificazione
-def cross_entropy_loss(self, inp, target):
-    return F.cross_entropy(inp, target.long().squeeze(), weight=self.weight,
-                            ignore_index=self.ignore_index, reduction=self.reduction)
 
 # Train di un epoca
 def train_pretrain_model(model, dataloader, num_signals, segment_length, iperparametri, optimizer, device):
@@ -45,7 +41,7 @@ def train_pretrain_model(model, dataloader, num_signals, segment_length, iperpar
         
         optimizer.zero_grad() # Azzeramento dei gradienti
         masks = generate_masks(iperparametri['batch_size'], iperparametri['masking_ratio'], 
-                               iperparametri['lm'], num_signals, segment_length, device) # Generazione delle maschere
+                               iperparametri['lm'], num_signals, segment_length, device) # Maschera booleana: 1 = mantenere, 0 = mascherare
         masked_batch = batch * masks # Applicazione della maschera
         predictions = model(masked_batch) # Passaggio del batch al modello
         loss = pretraining_loss(predictions, batch, masks) # Calcolo della loss
@@ -71,11 +67,13 @@ def validate_pretrain_model(model, dataloader, num_signals, segment_length, iper
         for batch in dataloader:
             
             masks = generate_masks(iperparametri['batch_size'], iperparametri['masking_ratio'], 
-                                   iperparametri['lm'], num_signals, segment_length, device) # Generazione delle maschere
+                                   iperparametri['lm'], num_signals, segment_length, device) # Maschera booleana: 1 = mantenere, 0 = mascherare
             masked_batch = batch * masks # Applicazione della maschera
             predictions = model(masked_batch) # Passaggio del batch al modello
             loss = pretraining_loss(predictions, batch, masks) # Calcolo della loss
             val_loss += loss.item() # Accumulo della loss
+
+            #try_graph(batch[0], masks[0], predictions[0], num_signals, segment_length)
 
             progress_bar.update(1)
         progress_bar.close()
