@@ -49,8 +49,9 @@ segment_length = 240 # Lunghezza dei segmenti in time steps
 num_classes = 3 # 'negative', 'positive', 'neutral'
 data_directory = 'processed_data\\' # Percorso dei dati
 split_ratios = [70, 15, 15] # Split ratio dei segmenti (train/val/test)
-num_epochs = 20 # Numero epoche task classification
+num_epochs = 15 # Numero epoche task classification
 label = 'valence' # Etichetta da classificare ('valence'/'arousal')
+num_trials = 15
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 data, labels = load_labeled_data(data_directory, signals, label)
@@ -71,6 +72,6 @@ iperparametri['lm'] = 12
 iperparametri['masking_ratio'] = 0.15
 
 study = optuna.create_study(direction='maximize')
-study.optimize(lambda trial: objective(trial, iperparametri, train_dataset, val_dataset, device), n_trials=10)
+study.optimize(lambda trial: objective(trial, iperparametri, train_dataset, val_dataset, device), n_trials=num_trials)
 print('Migliori iperparametri:', study.best_params)
 print('Miglior valore di perdita:', study.best_value)

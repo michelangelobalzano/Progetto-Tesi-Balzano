@@ -22,13 +22,14 @@ info_path = 'sessions\\' # Percorso per esportazione info training
 model_path = 'pretraining\\models\\' # Percorso del modello da caricare
 
 # Variabili per il caricamento del modello pre-addestrato
-model_to_load = '04-19_12-06' # Nome del modello da caricare (oppure None)
-old_task = 'classification' # Task modello da caricare ('pretraining' / 'classification')
+model_to_load = '04-19_13-04' # Nome del modello da caricare (oppure None)
+old_task = 'pretraining' # Task modello da caricare ('pretraining' / 'classification')
+freeze = False # True = freeze dei pesi, False = Fine-tuning dei pesi
 
 # Variabili del training
 task = 'classification'
 split_ratios = [70, 15, 15] # Split ratio dei segmenti (train/val/test)
-num_epochs = 10 # Numero epoche task classification
+num_epochs = 100 # Numero epoche task classification
 num_epochs_to_save = 5 # Ogni tot epoche effettua un salvataggio del modello (oppure None)
 label = 'valence' # Etichetta da classificare ('valence'/'arousal')
 
@@ -37,10 +38,10 @@ iperparametri = {
     'batch_size' : 256, # Dimensione di un batch di dati (in numero di segmenti)
     'masking_ratio' : 0.15, # Rapporto di valori mascherati
     'lm' : 12, # Lunghezza delle sequenze mascherate all'interno di una singola maschera
-    'd_model' : 128, # Dimensione interna del modello
-    'dropout' : 0.1, # Percentuale spegnimento neuroni
+    'd_model' : 256, # Dimensione interna del modello
+    'dropout' : 0.15, # Percentuale spegnimento neuroni
     'num_heads' : 8, # Numero di teste del modulo di auto-attenzione 
-    'num_layers' : 5 # Numero di layer dell'encoder
+    'num_layers' : 3 # Numero di layer dell'encoder
 }
 
 # MAIN
@@ -98,7 +99,17 @@ if model_to_load is not None:
     model, _ = load_model(model, model_path, model_to_load, task, old_task=old_task)
     model_name = model_to_load
     new_model = False
-    old_session_info = read_old_session_info(model_name, info_path, task)
+    if old_task == 'classification':
+        old_session_info = read_old_session_info(model_name, info_path, task)
+    else:
+        old_session_info = None
+        # Freeze o fine-tuning dei pesi
+        if freeze:
+            for name, param in model.named_parameters():
+                if name.startswith('output_layer'):
+                    param.requires_grad = True
+                else:
+                    param.requires_grad = False
 else:
     current_datetime = datetime.now()
     model_name = current_datetime.strftime("%m-%d_%H-%M")

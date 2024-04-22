@@ -70,7 +70,7 @@ def generate_random_start_idx(num_numbers, range_start, range_end, distance):
 def load_model(model, model_path, model_name, task, info_path=None, old_task=None):
     iperparametri = {}
     if task == 'classification': # Caricamento di un modello preaddestrato per classificazione
-        stato_modello = torch.load(model_path + task + '_' + model_name + '.pth')
+        stato_modello = torch.load(model_path + old_task + '_' + model_name + '.pth')
         # Eliminazione output layer
         if old_task == 'pretraining':
             output_layer_keys = ['output_layer.weight', 'output_layer.bias']
@@ -79,7 +79,7 @@ def load_model(model, model_path, model_name, task, info_path=None, old_task=Non
         model.load_state_dict(stato_modello, strict=False)
     elif task == 'pretraining': # Caricamento per continuare pretraining
         # Caricamento del modello
-        model.load_state_dict(torch.load(model_path + task + '_' + model_name + '.pth'))
+        model.load_state_dict(torch.load(model_path + old_task + '_' + model_name + '.pth'))
         # Caricamento degli iperparametri
         with open(info_path + 'pretraining_' + model_name + '.csv', newline='') as csvfile:
             reader = csv.reader(csvfile)

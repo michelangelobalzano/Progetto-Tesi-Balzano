@@ -88,7 +88,7 @@ def train_classification_model(model, dataloader, optimizer, device):
     train_loss = 0.0
     num_batches = len(dataloader)
 
-    progress_bar = tqdm(total=num_batches, desc="Train batch analizzati")
+    #progress_bar = tqdm(total=num_batches, desc="Train batch analizzati")
     for batch in dataloader:
         X, labels = batch
         X = X.to(device)
@@ -101,8 +101,8 @@ def train_classification_model(model, dataloader, optimizer, device):
         optimizer.step()
         train_loss += loss.item() # Accumulo della loss
 
-        progress_bar.update(1)
-    progress_bar.close()
+        #progress_bar.update(1)
+    #progress_bar.close()
 
     return train_loss / num_batches, model
 
@@ -114,7 +114,7 @@ def val_classification_model(model, dataloader, device, task):
     total = 0
     num_batches = len(dataloader)
 
-    progress_bar = tqdm(total=num_batches, desc=f"{task} batch analizzati")
+    #progress_bar = tqdm(total=num_batches, desc=f"{task} batch analizzati")
     with torch.no_grad():
         for batch in dataloader:
             X, labels = batch
@@ -129,8 +129,8 @@ def val_classification_model(model, dataloader, device, task):
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
 
-            progress_bar.update(1)
-    progress_bar.close()
+            #progress_bar.update(1)
+    #progress_bar.close()
 
     average_loss = val_loss / num_batches
     accuracy = correct / total

@@ -196,7 +196,7 @@ class MyEncoderLayer(nn.modules.Module):
         return data
 
 class TSTransformer(nn.Module):
-    def __init__(self, num_signals, segment_length, iperparametri, device, pe_type='leanable'):
+    def __init__(self, num_signals, segment_length, iperparametri, device, pe_type='learnable'):
         super(TSTransformer, self).__init__()
 
         self.num_signals = num_signals
@@ -236,7 +236,7 @@ class TSTransformer(nn.Module):
         return output # [batch_size, num_signals, segment_length]
 
 class TSTransformerClassifier(nn.Module):
-    def __init__(self, num_signals, segment_length, iperparametri, num_classes, device):
+    def __init__(self, num_signals, segment_length, iperparametri, num_classes, device, pe_type='learnable'):
         super(TSTransformerClassifier, self).__init__()
 
         self.num_signals = num_signals
@@ -249,7 +249,10 @@ class TSTransformerClassifier(nn.Module):
         self.num_classes = num_classes
 
         self.project_inp = nn.Linear(self.num_signals, self.d_model)
-        self.pos_enc = PositionalEncoding(segment_length, self.d_model, self.dropout, self.device)
+        if pe_type == 'learnable':
+            self.pos_enc = LearnablePositionalEncoding(self.segment_length, self.d_model, self.dropout)
+        elif pe_type == 'fixed':
+            self.pos_enc = FixedPositionalEncoding(self.segment_length, self.d_model, self.dropout, self.device)
         encoder_layer = MyEncoderLayer(self.d_model, self.num_heads, self.d_model, self.dropout)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, self.num_layers, mask_check=False, enable_nested_tensor=False)
         self.output_layer = nn.Linear(self.d_model * segment_length, num_classes)
@@ -269,7 +272,6 @@ class TSTransformerClassifier(nn.Module):
         output = self.act(output) # Funzione di attivazione
         output = output.permute(1, 0, 2)  # [batch_size, segment_length, d_model]
         output = self.dropout1(output) # Dropout
-        
         
         output = output.reshape(output.shape[0], -1) # [batch_size, segment_length * d_model]
         output = self.output_layer(output)  # Layer di output
