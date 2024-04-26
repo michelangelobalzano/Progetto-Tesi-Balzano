@@ -1,3 +1,4 @@
+import numpy as np
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader, TensorDataset
@@ -22,7 +23,7 @@ info_path = 'sessions\\' # Percorso per esportazione info training
 model_path = 'pretraining\\models\\' # Percorso del modello da caricare
 
 # Variabili per il caricamento del modello pre-addestrato
-model_to_load = '04-19_13-04' # Nome del modello da caricare (oppure None)
+model_to_load = None # Nome del modello da caricare (oppure None)
 old_task = 'pretraining' # Task modello da caricare ('pretraining' / 'classification')
 freeze = False # True = freeze dei pesi, False = Fine-tuning dei pesi
 
@@ -30,17 +31,19 @@ freeze = False # True = freeze dei pesi, False = Fine-tuning dei pesi
 task = 'classification'
 split_ratios = [70, 15, 15] # Split ratio dei segmenti (train/val/test)
 num_epochs = 100 # Numero epoche task classification
-num_epochs_to_save = 5 # Ogni tot epoche effettua un salvataggio del modello (oppure None)
+num_epochs_to_save = 10 # Ogni tot epoche effettua un salvataggio del modello (oppure None)
+improvement_patience = 10 # Numero di epoche di pazienza senza miglioramenti
+max_num_lr_reductions = 2 # Numero di riduzioni massimo del learning rate
 label = 'valence' # Etichetta da classificare ('valence'/'arousal')
 
 # Iperparametri modello (se non se ne carica uno)
 iperparametri = {
     'batch_size' : 256, # Dimensione di un batch di dati (in numero di segmenti)
     'masking_ratio' : 0.15, # Rapporto di valori mascherati
-    'lm' : 12, # Lunghezza delle sequenze mascherate all'interno di una singola maschera
+    'lm' : 3, # Lunghezza delle sequenze mascherate all'interno di una singola maschera
     'd_model' : 256, # Dimensione interna del modello
     'dropout' : 0.15, # Percentuale spegnimento neuroni
-    'num_heads' : 8, # Numero di teste del modulo di auto-attenzione 
+    'num_heads' : 4, # Numero di teste del modulo di auto-attenzione 
     'num_layers' : 3 # Numero di layer dell'encoder
 }
 
@@ -128,6 +131,10 @@ accuracy = []
 epoch_info = {'train_losses': [], 'val_losses': [], 'accuracy': []}
 test_info = {}
 start_time = time.time()
+num_lr_reductions = 0
+best_val_loss = np.inf
+epochs_without_improvements = 0
+early_stopped = False
 
 for epoch in range(num_epochs):
     
@@ -151,6 +158,26 @@ for epoch in range(num_epochs):
     # Aggiorna lo scheduler della velocità di apprendimento in base alla loss di validazione
     scheduler.step(val_loss)
 
+    # Early stopping
+    if val_loss < best_val_loss:
+        best_val_loss = val_loss
+        epochs_without_improvement = 0
+    else:
+        epochs_without_improvement += 1
+    if epochs_without_improvement >= improvement_patience:
+        num_lr_reductions += 1
+        epochs_without_improvement = 0
+        if num_lr_reductions > max_num_lr_reductions:
+            print('Arresto anticipato')
+            early_stopped = True
+            now = time.time()
+            elapsed_time = now - start_time
+            save_session_info(model_name, info_path, iperparametri, 
+                              epoch_info, epoch+1, elapsed_time, 
+                              task, old_session_info=old_session_info)
+            save_model(model, model_path, model_name, task)
+            break
+
     # Ogni tot epoche effettua un salvataggio del modello
     if num_epochs_to_save is not None:
         if (epoch + 1) % num_epochs_to_save == 0 and epoch > 0:
@@ -167,15 +194,12 @@ test_info['test_loss'] = test_loss
 test_info['test_accuracy'] = test_accuracy
 print(f"Test Loss: {test_loss}, Test Accuracy: {test_accuracy}")
 
-end_time = time.time()
-elapsed_time = end_time - start_time
-
-# Salvataggio modello e info training
-print('Salvataggio informazioni training su file...')
-save_session_info(model_name, info_path, iperparametri, 
-                  epoch_info, num_epochs, elapsed_time, 
-                  task, label, test_info, old_session_info=old_session_info)
-save_model(model, model_path, model_name, task)
-
-# Stampa grafico delle loss
+if not early_stopped:
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    save_session_info(model_name, info_path, iperparametri, 
+                    epoch_info, num_epochs, elapsed_time, 
+                    task, label, test_info, old_session_info=old_session_info)
+    save_model(model, model_path, model_name, task)
+    
 losses_graph(epoch_info, save_path=f'graphs\\losses_plot_{model_name}.png')

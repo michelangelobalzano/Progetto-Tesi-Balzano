@@ -166,4 +166,5 @@ if not early_stopped:
                     epoch_info, num_epochs, elapsed_time, 
                     task, old_session_info=old_session_info)
     save_model(model, model_path, model_name, task)
-    losses_graph(epoch_info, save_path=f'graphs\\losses_plot_{model_name}.png')
+    
+losses_graph(epoch_info, save_path=f'graphs\\losses_plot_{model_name}.png')
