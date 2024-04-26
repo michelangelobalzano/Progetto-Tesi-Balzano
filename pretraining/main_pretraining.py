@@ -21,7 +21,7 @@ info_path = 'sessions\\' # Percorso per esportazione info training
 model_path = 'pretraining\\models\\' # Percorso del modello da caricare
 
 # Variabili per il caricamento del modello dal quale continuare il pretraining
-model_to_load = None # Modello da caricare (oppure None)
+model_to_load = None # Modello da caricare ('m-d_H-M' / None)
 
 # Variabili del training
 task = 'pretraining'
@@ -33,7 +33,7 @@ num_epochs_to_save = 5 # Ogni tot epoche effettua un salvataggio del modello (op
 iperparametri = {
     'batch_size' : 256, # Dimensione di un batch di dati (in numero di segmenti)
     'masking_ratio' : 0.15, # Rapporto di valori mascherati
-    'lm' : 12, # Lunghezza delle sequenze mascherate all'interno di una singola maschera
+    'lm' : 3, # Lunghezza delle sequenze mascherate all'interno di una singola maschera
     'd_model' : 256, # Dimensione interna del modello
     'dropout' : 0.1, # Percentuale spegnimento neuroni
     'num_heads' : 4, # Numero di teste del modulo di auto-attenzione 

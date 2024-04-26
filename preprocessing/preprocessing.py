@@ -127,7 +127,25 @@ def preprocessing(data_directory, df_name, signals, min_seconds, target_freq, w_
     for signal in signals:
         segmented_data[signal] = segmented_data[signal].drop(['time','off-body', 'sleep'], axis=1)
 
-   # Esportazione delle features del dataset
+    # Eliminazione dei segmenti creati che non contengono frequency * window_size valori
+    for signal in signals:
+        segmented_data[signal] = segmented_data[signal].groupby('segment_id').filter(lambda x: len(x) == target_freq * w_size)
+
+    # Eliminazione segmenti non appartenenti all'intersezione dei segment_id
+    segment_set = set(segmented_data[signals[0]].groupby('segment_id').groups.keys())
+    for signal in signals:
+        segment_set = segment_set & set(segmented_data[signal].groupby('segment_id').groups.keys())
+    for signal in signals:
+        segmented_data[signal] = segmented_data[signal][segmented_data[signal]['segment_id'].isin(segment_set)]
+
+    '''# Controllo che i segment_id dei tre dataset coincidono
+    segmenti = set(segmented_data[signals[0]].groupby('segment_id').groups.keys())
+    for signal in signals:
+        segmenti2 = set(segmented_data[signal].groupby('segment_id').groups.keys())
+        if (segmenti != segmenti2):
+            break'''
+
+    # Esportazione delle features del dataset
     for signal in signals:
         print(f"Esportazione {signal}...")
         export_df(segmented_data[signal], data_directory, signal)
