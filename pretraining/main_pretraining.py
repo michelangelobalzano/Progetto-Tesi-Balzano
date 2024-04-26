@@ -1,3 +1,4 @@
+import numpy as np
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader, TensorDataset
@@ -27,7 +28,9 @@ model_to_load = None # Modello da caricare ('m-d_H-M' / None)
 task = 'pretraining'
 split_ratios = [85, 15] # Split ratio dei segmenti (train/val)
 num_epochs = 100 # Numero epoche task pretraining
-num_epochs_to_save = 5 # Ogni tot epoche effettua un salvataggio del modello (oppure None)
+num_epochs_to_save = 10 # Ogni tot epoche effettua un salvataggio del modello (oppure None)
+improvement_patience = 10 # Numero di epoche di pazienza senza miglioramenti
+max_num_lr_reductions = 2 # Numero di riduzioni massimo del learning rate
 
 # Iperparametri nuovo modello (se non se ne carica uno)
 iperparametri = {
@@ -46,7 +49,6 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 if torch.cuda.is_available():
     device_count = torch.cuda.device_count()
     print(f"GPU disponibili: {device_count}")
-    
     current_device_name = torch.cuda.get_device_name(torch.cuda.current_device())
     print(f"GPU in uso: {current_device_name}")
 else:
@@ -96,12 +98,16 @@ else:
 # Definizione dell'ottimizzatore (AdamW)
 optimizer = optim.AdamW(model.parameters(), lr=0.001)
 # Definizione dello scheduler di apprendimento
-scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.3, patience=10, threshold=1e-4, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-8)
+scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.3, patience=improvement_patience, threshold=1e-4, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-8)
 
 # Ciclo di training
 val_losses = []
 epoch_info = {'train_losses': [], 'val_losses': []}
 start_time = time.time()
+num_lr_reductions = 0
+best_val_loss = np.inf
+epochs_without_improvements = 0
+early_stopped = False
 
 for epoch in range(num_epochs):
     
@@ -112,7 +118,7 @@ for epoch in range(num_epochs):
     # Validation
     val_loss, model = validate_pretrain_model(model, val_dataloader, num_signals, segment_length, iperparametri, device)
 
-    val_losses.append(val_loss)
+    val_losses.append(round(val_loss, 2))
 
     print(f"Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss}, Val Loss: {val_loss}")
 
@@ -122,6 +128,26 @@ for epoch in range(num_epochs):
 
     # Aggiorna lo scheduler della velocità di apprendimento in base alla loss di validazione
     scheduler.step(val_loss)
+    
+    # Early stopping
+    if val_loss < best_val_loss:
+        best_val_loss = val_loss
+        epochs_without_improvement = 0
+    else:
+        epochs_without_improvement += 1
+    if epochs_without_improvement >= improvement_patience:
+        num_lr_reductions += 1
+        epochs_without_improvement = 0
+        if num_lr_reductions > max_num_lr_reductions:
+            print('Arresto anticipato')
+            early_stopped = True
+            now = time.time()
+            elapsed_time = now - start_time
+            save_session_info(model_name, info_path, iperparametri, 
+                              epoch_info, epoch+1, elapsed_time, 
+                              task, old_session_info=old_session_info)
+            save_model(model, model_path, model_name, task)
+            break
 
     # Ogni tot epoche effettua un salvataggio del modello
     if num_epochs_to_save is not None:
@@ -133,17 +159,11 @@ for epoch in range(num_epochs):
                               task, old_session_info=old_session_info)
             save_model(model, model_path, model_name, task)
 
-end_time = time.time()
-elapsed_time = end_time - start_time
-
-# Salvataggio modello e info training
-print('Salvataggio informazioni pretraining su file...')
-
-# Salvataggio modello e info training
-save_session_info(model_name, info_path, iperparametri, 
-                  epoch_info, num_epochs, elapsed_time, 
-                  task, old_session_info=old_session_info)
-save_model(model, model_path, model_name, task)
-
-# Stampa grafico delle loss
-losses_graph(epoch_info, save_path=f'graphs\\losses_plot_{model_name}.png')
+if not early_stopped:
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    save_session_info(model_name, info_path, iperparametri, 
+                    epoch_info, num_epochs, elapsed_time, 
+                    task, old_session_info=old_session_info)
+    save_model(model, model_path, model_name, task)
+    losses_graph(epoch_info, save_path=f'graphs\\losses_plot_{model_name}.png')

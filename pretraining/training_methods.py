@@ -24,7 +24,6 @@ def pretraining_loss(predictions, true, masks):
     masked_predictions = torch.masked_select(predictions, masks)
 
     mse_loss = criterion(masked_predictions, masked_true)
-
     rmse_loss = torch.sqrt(mse_loss)
 
     return rmse_loss
@@ -136,19 +135,6 @@ def val_classification_model(model, dataloader, device, task):
     accuracy = correct / total
 
     return average_loss, accuracy, model
-
-''' 
-# Metodo per il criterio di stop anticipato
-def early_stopping(val_losses, patience=10):
-    if len(val_losses) < patience + 1:
-        return False
-
-    for i in range(1, patience + 1):
-        if val_losses[-i] < val_losses[-i - 1]:
-            return False
-
-    return True
-'''
 
 # Prova del modello con stampa del grafico delle previsioni del primo segmento del primo batch
 def try_model(model, dataloader, num_signals, segment_length, iperparametri, device):
