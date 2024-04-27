@@ -29,7 +29,7 @@ def pretraining_loss(predictions, true, masks):
     return rmse_loss
 
 # Train di un epoca
-def train_pretrain_model(model, dataloader, num_signals, segment_length, iperparametri, optimizer, device):
+def train_pretrain_model(model, dataloader, num_signals, segment_length, batch_size, masking_parameters, optimizer, device):
     
     model.train()
     train_loss = 0.0
@@ -39,8 +39,8 @@ def train_pretrain_model(model, dataloader, num_signals, segment_length, iperpar
     for batch in dataloader:
         
         optimizer.zero_grad() # Azzeramento dei gradienti
-        masks = generate_masks(iperparametri['batch_size'], iperparametri['masking_ratio'], 
-                               iperparametri['lm'], num_signals, segment_length, device) # Maschera booleana: 1 = mantenere, 0 = mascherare
+        masks = generate_masks(batch_size, masking_parameters['masking_ratio'], 
+                               masking_parameters['lm'], num_signals, segment_length, device) # Maschera booleana: 1 = mantenere, 0 = mascherare
         masked_batch = batch * masks # Applicazione della maschera
         predictions = model(masked_batch) # Passaggio del batch al modello
         loss = pretraining_loss(predictions, batch, masks) # Calcolo della loss
@@ -51,10 +51,10 @@ def train_pretrain_model(model, dataloader, num_signals, segment_length, iperpar
         progress_bar.update(1)
     progress_bar.close()
 
-    return train_loss / num_batches, model
+    return train_loss / num_batches
 
 # Validation di un epoca
-def validate_pretrain_model(model, dataloader, num_signals, segment_length, iperparametri, device):
+def validate_pretrain_model(model, dataloader, num_signals, segment_length, batch_size, masking_parameters, device):
     
     model.eval()
     val_loss = 0.0
@@ -65,8 +65,8 @@ def validate_pretrain_model(model, dataloader, num_signals, segment_length, iper
         progress_bar = tqdm(total=num_batches, desc="Val batch analizzati")
         for batch in dataloader:
             
-            masks = generate_masks(iperparametri['batch_size'], iperparametri['masking_ratio'], 
-                                   iperparametri['lm'], num_signals, segment_length, device) # Maschera booleana: 1 = mantenere, 0 = mascherare
+            masks = generate_masks(batch_size, masking_parameters['masking_ratio'], 
+                                   masking_parameters['lm'], num_signals, segment_length, device) # Maschera booleana: 1 = mantenere, 0 = mascherare
             masked_batch = batch * masks # Applicazione della maschera
             predictions = model(masked_batch) # Passaggio del batch al modello
             loss = pretraining_loss(predictions, batch, masks) # Calcolo della loss
@@ -78,7 +78,7 @@ def validate_pretrain_model(model, dataloader, num_signals, segment_length, iper
         progress_bar.close()
 
     # Calcola la loss media per la validazione
-    return val_loss / num_batches, model
+    return val_loss / num_batches
 
 # Train di un epoca
 def train_classification_model(model, dataloader, optimizer, device):
@@ -87,7 +87,7 @@ def train_classification_model(model, dataloader, optimizer, device):
     train_loss = 0.0
     num_batches = len(dataloader)
 
-    #progress_bar = tqdm(total=num_batches, desc="Train batch analizzati")
+    progress_bar = tqdm(total=num_batches, desc="Train batch analizzati")
     for batch in dataloader:
         X, labels = batch
         X = X.to(device)
@@ -100,10 +100,10 @@ def train_classification_model(model, dataloader, optimizer, device):
         optimizer.step()
         train_loss += loss.item() # Accumulo della loss
 
-        #progress_bar.update(1)
-    #progress_bar.close()
+        progress_bar.update(1)
+    progress_bar.close()
 
-    return train_loss / num_batches, model
+    return train_loss / num_batches
 
 def val_classification_model(model, dataloader, device, task):
 
@@ -113,7 +113,7 @@ def val_classification_model(model, dataloader, device, task):
     total = 0
     num_batches = len(dataloader)
 
-    #progress_bar = tqdm(total=num_batches, desc=f"{task} batch analizzati")
+    progress_bar = tqdm(total=num_batches, desc=f"{task} batch analizzati")
     with torch.no_grad():
         for batch in dataloader:
             X, labels = batch
@@ -128,13 +128,13 @@ def val_classification_model(model, dataloader, device, task):
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
 
-            #progress_bar.update(1)
-    #progress_bar.close()
+            progress_bar.update(1)
+    progress_bar.close()
 
     average_loss = val_loss / num_batches
     accuracy = correct / total
 
-    return average_loss, accuracy, model
+    return average_loss, accuracy
 
 # Prova del modello con stampa del grafico delle previsioni del primo segmento del primo batch
 def try_model(model, dataloader, num_signals, segment_length, iperparametri, device):

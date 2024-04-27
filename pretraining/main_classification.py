@@ -9,7 +9,7 @@ from datetime import datetime
 from data_preparation import load_labeled_data, prepare_classification_data, classification_collate_fn, classification_data_split
 from training_methods import train_classification_model, val_classification_model
 from graphs_methods import losses_graph
-from utils import load_model, save_session_info, save_model, read_old_session_info
+from utils import load_pretrained_model, load_pretrained_model_params, save_classification_info, save_model
 
 # Variabili dipendenti dal preprocessing
 signals = ['BVP', 'EDA', 'HR'] # Segnali considerati
@@ -23,28 +23,25 @@ info_path = 'sessions\\' # Percorso per esportazione info training
 model_path = 'pretraining\\models\\' # Percorso del modello da caricare
 
 # Variabili per il caricamento del modello pre-addestrato
-model_to_load = None # Nome del modello da caricare (oppure None)
-old_task = 'pretraining' # Task modello da caricare ('pretraining' / 'classification')
+model_to_load = '04-27_12-45' # Nome del modello preaddestrato da caricare (oppure None)
 freeze = False # True = freeze dei pesi, False = Fine-tuning dei pesi
 
 # Variabili del training
-task = 'classification'
 split_ratios = [70, 15, 15] # Split ratio dei segmenti (train/val/test)
-num_epochs = 100 # Numero epoche task classification
-num_epochs_to_save = 10 # Ogni tot epoche effettua un salvataggio del modello (oppure None)
+num_epochs = 3 # Numero epoche task classification
+num_epochs_to_save = 2 # Ogni tot epoche effettua un salvataggio del modello (oppure None)
 improvement_patience = 10 # Numero di epoche di pazienza senza miglioramenti
 max_num_lr_reductions = 2 # Numero di riduzioni massimo del learning rate
 label = 'valence' # Etichetta da classificare ('valence'/'arousal')
 
-# Iperparametri modello (se non se ne carica uno)
-iperparametri = {
-    'batch_size' : 256, # Dimensione di un batch di dati (in numero di segmenti)
-    'masking_ratio' : 0.15, # Rapporto di valori mascherati
-    'lm' : 3, # Lunghezza delle sequenze mascherate all'interno di una singola maschera
-    'd_model' : 256, # Dimensione interna del modello
-    'dropout' : 0.15, # Percentuale spegnimento neuroni
-    'num_heads' : 4, # Numero di teste del modulo di auto-attenzione 
-    'num_layers' : 3 # Numero di layer dell'encoder
+# Iperparametri nuovo modello (se non se ne carica uno)
+model_parameters = {
+    'batch_size': 256, # Dimensione di un batch di dati (in numero di segmenti)
+    'd_model': 256, # Dimensione interna del modello
+    'dropout': 0.1, # Percentuale spegnimento neuroni
+    'num_heads': 4, # Numero di teste del modulo di auto-attenzione 
+    'num_layers': 3, # Numero di layer dell'encoder
+    'pe_type': 'learnable' # Tipo di positional encoder ('learnable' / 'fixed')
 }
 
 # MAIN
@@ -90,40 +87,45 @@ test_labels = test_labels.to(device)
 train_dataset = TensorDataset(train_data, train_labels)
 val_dataset = TensorDataset(val_data, val_labels)
 test_dataset = TensorDataset(test_data, test_labels)
-train_dataloader = DataLoader(train_dataset, batch_size=iperparametri['batch_size'], shuffle=True, drop_last=True, collate_fn=classification_collate_fn)
-val_dataloader = DataLoader(val_dataset, batch_size=iperparametri['batch_size'], shuffle=True, drop_last=True, collate_fn=classification_collate_fn)
-test_dataloader = DataLoader(test_dataset, batch_size=iperparametri['batch_size'], shuffle=True, drop_last=True, collate_fn=classification_collate_fn)
+train_dataloader = DataLoader(train_dataset, batch_size=model_parameters['batch_size'], shuffle=True, drop_last=True, collate_fn=classification_collate_fn)
+val_dataloader = DataLoader(val_dataset, batch_size=model_parameters['batch_size'], shuffle=True, drop_last=True, collate_fn=classification_collate_fn)
+test_dataloader = DataLoader(test_dataset, batch_size=model_parameters['batch_size'], shuffle=True, drop_last=True, collate_fn=classification_collate_fn)
 
 # Definizione transformer
 print('Creazione del modello...')
-model = TSTransformerClassifier(num_signals, segment_length, iperparametri, num_classes, device)
+model = TSTransformerClassifier(num_signals, 
+                                segment_length, 
+                                model_parameters, 
+                                num_classes, 
+                                device)
 model = model.to(device)
 if model_to_load is not None:
-    model, _ = load_model(model, model_path, model_to_load, task, old_task=old_task)
     model_name = model_to_load
-    new_model = False
-    if old_task == 'classification':
-        old_session_info = read_old_session_info(model_name, info_path, task)
-    else:
-        old_session_info = None
-        # Freeze o fine-tuning dei pesi
-        if freeze:
-            for name, param in model.named_parameters():
-                if name.startswith('output_layer'):
-                    param.requires_grad = True
-                else:
-                    param.requires_grad = False
+    # Caricamento modello
+    model = load_pretrained_model(model, 
+                                  model_path, 
+                                  model_name, 
+                                  task='classification', 
+                                  freeze=freeze)
+    # Caricamento parametri modello ed etichetta da classificare
+    model_parameters = load_pretrained_model_params(model_name, info_path)
 else:
     current_datetime = datetime.now()
     model_name = current_datetime.strftime("%m-%d_%H-%M")
-    new_model = True
-    old_session_info = None
 
 # Definizione dell'ottimizzatore (AdamW)
 optimizer = optim.AdamW(model.parameters(), lr=0.001)
 
 # Definizione dello scheduler di apprendimento
-scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.3, patience=10, threshold=1e-4, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-8)
+scheduler = ReduceLROnPlateau(optimizer, 
+                              mode='min', 
+                              factor=0.3, 
+                              patience=10, 
+                              threshold=1e-4, 
+                              threshold_mode='rel', 
+                              cooldown=0, 
+                              min_lr=0, 
+                              eps=1e-8)
 
 # Ciclo di training
 val_losses = []
@@ -134,16 +136,21 @@ start_time = time.time()
 num_lr_reductions = 0
 best_val_loss = np.inf
 epochs_without_improvements = 0
-early_stopped = False
 
 for epoch in range(num_epochs):
     
     print(f'\nEPOCA: {epoch + 1}')
 
     # Training
-    train_loss, model = train_classification_model(model, train_dataloader, optimizer, device)
+    train_loss = train_classification_model(model, 
+                                            train_dataloader, 
+                                            optimizer, 
+                                            device)
     # Validation
-    val_loss, val_accuracy, model = val_classification_model(model, val_dataloader, device, task='validation')
+    val_loss, val_accuracy = val_classification_model(model, 
+                                                      val_dataloader, 
+                                                      device, 
+                                                      task='validation')
 
     val_losses.append(val_loss)
     accuracy.append(val_accuracy)
@@ -169,13 +176,6 @@ for epoch in range(num_epochs):
         epochs_without_improvement = 0
         if num_lr_reductions > max_num_lr_reductions:
             print('Arresto anticipato')
-            early_stopped = True
-            now = time.time()
-            elapsed_time = now - start_time
-            save_session_info(model_name, info_path, iperparametri, 
-                              epoch_info, epoch+1, elapsed_time, 
-                              task, old_session_info=old_session_info)
-            save_model(model, model_path, model_name, task)
             break
 
     # Ogni tot epoche effettua un salvataggio del modello
@@ -183,23 +183,39 @@ for epoch in range(num_epochs):
         if (epoch + 1) % num_epochs_to_save == 0 and epoch > 0:
             now = time.time()
             elapsed_time = now - start_time
-            save_session_info(model_name, info_path, iperparametri, 
-                              epoch_info, epoch+1, elapsed_time, 
-                              task, old_session_info=old_session_info)
-            save_model(model, model_path, model_name, task)
+            save_classification_info(model_name, 
+                                     info_path, 
+                                     model_parameters, 
+                                     label, 
+                                     epoch_info, epoch+1, 
+                                     elapsed_time)
+            save_model(model, 
+                       model_path, 
+                       model_name, 
+                       task='classification')
 
 # Test
-test_loss, test_accuracy, model = val_classification_model(model, test_dataloader, device, task='testing')
+test_loss, test_accuracy = val_classification_model(model, 
+                                                    test_dataloader, 
+                                                    device, 
+                                                    task='testing')
 test_info['test_loss'] = test_loss
 test_info['test_accuracy'] = test_accuracy
 print(f"Test Loss: {test_loss}, Test Accuracy: {test_accuracy}")
 
-if not early_stopped:
-    end_time = time.time()
-    elapsed_time = end_time - start_time
-    save_session_info(model_name, info_path, iperparametri, 
-                    epoch_info, num_epochs, elapsed_time, 
-                    task, label, test_info, old_session_info=old_session_info)
-    save_model(model, model_path, model_name, task)
+end_time = time.time()
+elapsed_time = end_time - start_time
+save_classification_info(model_name, 
+                         info_path, 
+                         model_parameters, 
+                         label,
+                         epoch_info, 
+                         epoch+1, 
+                         elapsed_time, 
+                         test_info)
+save_model(model, 
+           model_path, 
+           model_name, 
+           task='classification')
     
 losses_graph(epoch_info, save_path=f'graphs\\losses_plot_{model_name}.png')
