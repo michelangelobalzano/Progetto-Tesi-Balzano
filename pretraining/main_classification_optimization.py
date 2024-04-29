@@ -8,40 +8,56 @@ from tqdm import tqdm
 from data_preparation import load_labeled_data, prepare_classification_data, classification_collate_fn, classification_data_split
 from training_methods import train_classification_model, val_classification_model
 
-def objective(trial, iperparametri, train_dataset, val_dataset, device):
+def objective(trial, model_params, train_dataset, val_dataset, device):
     batch_size = trial.suggest_categorical('batch_size', [32, 64, 128, 256])
     d_model = trial.suggest_categorical('d_model', [32, 64, 128, 256])
+    dim_feedforward = trial.suggest_categorical('dim_feedforward', [128, 256, 512, 1024, 2048])
     dropout = trial.suggest_float('dropout', 0.1, 0.5)
     num_heads = trial.suggest_categorical('num_heads', [2, 4, 8])
     num_layers = trial.suggest_int('num_layers', 2, 6)
+    pe_type = trial.suggest_categorical('pe_type', ['fixed', 'learnable'])
 
-    iperparametri['batch_size'] = batch_size
-    iperparametri['d_model'] = d_model
-    iperparametri['dropout'] = dropout
-    iperparametri['num_heads'] = num_heads
-    iperparametri['num_layers'] = num_layers
+    model_params['batch_size'] = batch_size
+    model_params['d_model'] = d_model
+    model_params['dim_feedforward'] = dim_feedforward
+    model_params['dropout'] = dropout
+    model_params['num_heads'] = num_heads
+    model_params['num_layers'] = num_layers
+    model_params['pe_type'] = pe_type
 
-    train_dataloader = DataLoader(train_dataset, batch_size=iperparametri['batch_size'], shuffle=True, drop_last=True, collate_fn=classification_collate_fn)
-    val_dataloader = DataLoader(val_dataset, batch_size=iperparametri['batch_size'], shuffle=True, drop_last=True, collate_fn=classification_collate_fn)
+    train_dataloader = DataLoader(train_dataset, batch_size=model_params['batch_size'], shuffle=True, drop_last=True, collate_fn=classification_collate_fn)
+    val_dataloader = DataLoader(val_dataset, batch_size=model_params['batch_size'], shuffle=True, drop_last=True, collate_fn=classification_collate_fn)
 
-    model = TSTransformerClassifier(num_signals, segment_length, iperparametri, num_classes, device)
+    model = TSTransformerClassifier(num_signals, 
+                                    segment_length, 
+                                    model_params, 
+                                    num_classes, 
+                                    device)
     model = model.to(device)
     optimizer = optim.AdamW(model.parameters(), lr=0.001)
-    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.3, patience=10, threshold=1e-4, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-8)
-    val_losses = []
-    accuracy = []
+    scheduler = ReduceLROnPlateau(optimizer, 
+                                  mode='min', 
+                                  factor=0.3, 
+                                  patience=10, 
+                                  threshold=1e-4, 
+                                  threshold_mode='rel', 
+                                  cooldown=0, 
+                                  min_lr=0, 
+                                  eps=1e-8)
 
-    progress_bar = tqdm(total=num_epochs, desc=f"epoche")
     for _ in range(num_epochs):
-        _, model = train_classification_model(model, train_dataloader, optimizer, device)
-        val_loss, val_accuracy, model = val_classification_model(model, val_dataloader, device, task='Validation')
-        val_losses.append(val_loss)
-        accuracy.append(val_accuracy)
+        _ = train_classification_model(model, 
+                                       train_dataloader, 
+                                       optimizer, 
+                                       device)
+        val_loss, val_accuracy = val_classification_model(model, 
+                                                          val_dataloader, 
+                                                          device, 
+                                                          task='Validation')
+        
         scheduler.step(val_loss)
-        progress_bar.update(1)
-    progress_bar.close()
     
-    return accuracy[-1]
+    return val_accuracy
 
 signals = ['BVP', 'EDA', 'HR'] # Segnali considerati
 num_signals = len(signals) # Numero dei segnali
@@ -67,11 +83,13 @@ val_labels = val_labels.to(device)
 train_dataset = TensorDataset(train_data, train_labels)
 val_dataset = TensorDataset(val_data, val_labels)
 
-iperparametri = {}
-iperparametri['lm'] = 12
-iperparametri['masking_ratio'] = 0.15
+model_params = {}
 
 study = optuna.create_study(direction='maximize')
-study.optimize(lambda trial: objective(trial, iperparametri, train_dataset, val_dataset, device), n_trials=num_trials)
+study.optimize(lambda trial: objective(trial, 
+                                       model_params, 
+                                       train_dataset, 
+                                       val_dataset, 
+                                       device), n_trials=num_trials)
 print('Migliori iperparametri:', study.best_params)
 print('Miglior valore di perdita:', study.best_value)

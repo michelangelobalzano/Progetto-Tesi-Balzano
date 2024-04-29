@@ -38,6 +38,7 @@ label = 'valence' # Etichetta da classificare ('valence'/'arousal')
 model_parameters = {
     'batch_size': 256, # Dimensione di un batch di dati (in numero di segmenti)
     'd_model': 256, # Dimensione interna del modello
+    'dim_feedforward': 512, # Dimensione feedforward network
     'dropout': 0.1, # Percentuale spegnimento neuroni
     'num_heads': 4, # Numero di teste del modulo di auto-attenzione 
     'num_layers': 3, # Numero di layer dell'encoder
@@ -128,8 +129,6 @@ scheduler = ReduceLROnPlateau(optimizer,
                               eps=1e-8)
 
 # Ciclo di training
-val_losses = []
-accuracy = []
 epoch_info = {'train_losses': [], 'val_losses': [], 'accuracy': []}
 test_info = {}
 start_time = time.time()
@@ -151,9 +150,6 @@ for epoch in range(num_epochs):
                                                       val_dataloader, 
                                                       device, 
                                                       task='validation')
-
-    val_losses.append(val_loss)
-    accuracy.append(val_accuracy)
 
     print(f"Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss}, Val Loss: {val_loss}, Accuracy: {val_accuracy}")
 

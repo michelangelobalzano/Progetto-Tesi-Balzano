@@ -24,15 +24,16 @@ model_path = 'pretraining\\models\\' # Percorso salvataggio modello
 # Variabili del training
 split_ratios = [85, 15] # Split ratio dei segmenti (train/val)
 num_epochs = 100 # Numero epoche task pretraining
-num_epochs_to_save = 2 # Ogni tot epoche effettua un salvataggio del modello (oppure None)
+num_epochs_to_save = 10 # Ogni tot epoche effettua un salvataggio del modello (oppure None)
 improvement_patience = 10 # Numero di epoche di pazienza senza miglioramenti
 max_num_lr_reductions = 2 # Numero di riduzioni massimo del learning rate
 
 # Iperparametri nuovo modello (se non se ne carica uno)
 model_parameters = {
     'batch_size': 256, # Dimensione di un batch di dati (in numero di segmenti)
-    'd_model': 256, # Dimensione interna del modello
-    'dropout': 0.1, # Percentuale spegnimento neuroni
+    'd_model': 64, # Dimensione interna del modello
+    'dim_feedforward': 256, # Dimensione feedforward network
+    'dropout': 0.25, # Percentuale spegnimento neuroni
     'num_heads': 4, # Numero di teste del modulo di auto-attenzione 
     'num_layers': 3, # Numero di layer dell'encoder
     'pe_type': 'learnable' # Tipo di positional encoder ('learnable' / 'fixed')
@@ -82,16 +83,26 @@ val_dataloader = DataLoader(val_dataset, batch_size=model_parameters['batch_size
 
 # Definizione transformer
 print('Creazione del modello...')
-model = TSTransformer(num_signals, segment_length, model_parameters, device)
+model = TSTransformer(num_signals, 
+                      segment_length, 
+                      model_parameters, 
+                      device)
 model = model.to(device)
-val_losses = []
 epoch_info = {'train_losses': [], 'val_losses': []}
 current_datetime = datetime.now()
 model_name = current_datetime.strftime("%m-%d_%H-%M")
 # Definizione dell'ottimizzatore (AdamW)
 optimizer = optim.AdamW(model.parameters(), lr=0.001)
 # Definizione dello scheduler di apprendimento
-scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.3, patience=improvement_patience, threshold=1e-4, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-8)
+scheduler = ReduceLROnPlateau(optimizer, 
+                              mode='min', 
+                              factor=0.3, 
+                              patience=improvement_patience, 
+                              threshold=1e-4, 
+                              threshold_mode='rel', 
+                              cooldown=0, 
+                              min_lr=0, 
+                              eps=1e-8)
 
 # Ciclo di training
 start_time = time.time()
@@ -102,18 +113,25 @@ early_stopped = False
 
 for epoch in range(num_epochs):
     
-    print(f'\nEPOCA: {epoch + 1}')
+    print(f'\nEPOCH: {epoch + 1}')
 
     # Training
-    train_loss = train_pretrain_model(model, train_dataloader, num_signals, segment_length, 
-                                             model_parameters['batch_size'], masking_parameters, 
-                                             optimizer, device)
+    train_loss = train_pretrain_model(model, 
+                                      train_dataloader, 
+                                      num_signals, 
+                                      segment_length, 
+                                      model_parameters['batch_size'], 
+                                      masking_parameters, 
+                                      optimizer, 
+                                      device)
     # Validation
-    val_loss = validate_pretrain_model(model, val_dataloader, num_signals, segment_length, 
-                                              model_parameters['batch_size'], masking_parameters, 
-                                              device)
-
-    val_losses.append(round(val_loss, 2))
+    val_loss = validate_pretrain_model(model, 
+                                       val_dataloader, 
+                                       num_signals, 
+                                       segment_length, 
+                                       model_parameters['batch_size'], 
+                                       masking_parameters, 
+                                       device)
 
     print(f"Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss}, Val Loss: {val_loss}")
 
@@ -134,7 +152,7 @@ for epoch in range(num_epochs):
         num_lr_reductions += 1
         epochs_without_improvement = 0
         if num_lr_reductions > max_num_lr_reductions:
-            print('Arresto anticipato')
+            print('Early stopped')
             break
 
     # Ogni tot epoche effettua un salvataggio del modello
