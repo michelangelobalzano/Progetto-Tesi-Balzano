@@ -202,7 +202,6 @@ class TSTransformer(nn.Module):
         super(TSTransformer, self).__init__()
 
         self.config = config
-
         self.num_signals = config['num_signals']
         self.segment_length = config['segment_length']
         self.d_model = config['d_model']

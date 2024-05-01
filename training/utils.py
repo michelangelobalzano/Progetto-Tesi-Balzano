@@ -1,6 +1,5 @@
 import torch
 import random
-import pandas as pd
 import csv
 
 '''

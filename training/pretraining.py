@@ -1,4 +1,3 @@
-import numpy as np
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from transformer import TSTransformer

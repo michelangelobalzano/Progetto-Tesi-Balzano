@@ -1,4 +1,3 @@
-import numpy as np
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from transformer import TSTransformerClassifier
@@ -41,14 +40,14 @@ def main(config):
         model_name = current_datetime.strftime("%m-%d_%H-%M")
 
     # Definizione dell'ottimizzatore (AdamW)
-    optimizer = optim.AdamW(model.parameters(), lr=0.001)
+    optimizer = optim.AdamW(model.parameters(), lr=config['learning_rate'])
 
     # Definizione dello scheduler di apprendimento
     scheduler = ReduceLROnPlateau(optimizer, 
                                 mode='min', 
-                                factor=0.3, 
-                                patience=10, 
-                                threshold=1e-4, 
+                                factor=config['factor'], 
+                                patience=config['patience'], 
+                                threshold=config['threshold'], 
                                 threshold_mode='rel', 
                                 cooldown=0, 
                                 min_lr=0, 

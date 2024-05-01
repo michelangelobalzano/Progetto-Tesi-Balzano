@@ -1,10 +1,8 @@
 import torch
 import torch.nn as nn
-import numpy as np
 from utils import generate_masks
 from tqdm import tqdm
 from graphs_methods import try_graph
-from torch.nn import functional as F
 
 # Calcolo della loss per la classificazione
 def classification_loss(predictions, labels):

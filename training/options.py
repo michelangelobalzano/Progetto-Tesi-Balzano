@@ -42,6 +42,10 @@ class Options(object):
                                  help='Se impostato, congela tutti i parametri del modello eccetto l output layer (solo per classificazione).')
         self.parser.add_argument('--label', choices={'valence', 'arousal'}, default='valence',
                                  help='Etichetta da predire (solo per classificazione).')
+        self.parser.add_argument('--num_optimization_trials', type=int, default=20,
+                                 help='Numero di tentativi di ottimizzazione iperaparametri.')
+        self.parser.add_argument('--num_optimization_epochs', type=int, default=20,
+                                 help='Numero di epoche per trial di ottimizzazione iperparametri.')
         # Parametri modello
         self.parser.add_argument('--batch_size', type=int, default=256,
                                  help='Numero segmenti di un batch.')
