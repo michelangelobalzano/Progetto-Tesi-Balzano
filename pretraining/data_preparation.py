@@ -1,6 +1,7 @@
 import pandas as pd
 import torch
 from sklearn.model_selection import train_test_split
+from torch.utils.data import DataLoader, TensorDataset
 
 # Caricamento dei dati
 def load_unlabeled_data(data_directory, signals):
@@ -25,9 +26,9 @@ def load_labeled_data(data_directory, signals, label):
     return data, labels
 
 # Suddivisione dei segmenti in train e val per la task pretraining
-def pretrain_data_split(data, split_ratios, signals):
-    segment_ids = data['BVP']['segment_id'].unique()
-    train_segment_ids, val_segment_ids = train_test_split(segment_ids, train_size=split_ratios[0]/100, random_state=42)
+def pretrain_data_split(data, val_ratio, signals):
+    segment_ids = data[signals[0]]['segment_id'].unique()
+    train_segment_ids, val_segment_ids = train_test_split(segment_ids, train_size=(100-val_ratio)/100, random_state=42)
 
     train_data = {}
     val_data = {}
@@ -38,10 +39,10 @@ def pretrain_data_split(data, split_ratios, signals):
     return train_data, val_data
 
 # Suddivisione dei segmenti in train val e test per la task classification
-def classification_data_split(data, labels, split_ratios, signals):
-    segment_ids = data['BVP']['segment_id'].unique()
-    train_segment_ids, remaining = train_test_split(segment_ids, train_size=split_ratios[0]/100, random_state=42)
-    val_segment_ids, test_segment_ids = train_test_split(remaining, train_size=split_ratios[1] / (split_ratios[1] + split_ratios[2]), random_state=42)
+def classification_data_split(data, labels, val_ratio, test_ratio, signals):
+    segment_ids = data[signals[0]]['segment_id'].unique()
+    train_segment_ids, remaining = train_test_split(segment_ids, train_size=(100-val_ratio-test_ratio)/100, random_state=42)
+    val_segment_ids, test_segment_ids = train_test_split(remaining, train_size=val_ratio / (val_ratio + test_ratio), random_state=42)
 
     train_data = {}
     val_data = {}
@@ -57,7 +58,7 @@ def classification_data_split(data, labels, split_ratios, signals):
     return train_data, train_labels, val_data, val_labels, test_data, test_labels
 
 # Conversione dei dati in un tensore di dimensioni (num_signals, num_segments, segment_length)
-def prepare_data(data, num_signals, num_segments, segment_length):
+def pretraining_data_to_tensor(data, num_signals, num_segments, segment_length):
     
     prepared_data = torch.zeros(num_signals, num_segments, segment_length)
     
@@ -70,7 +71,7 @@ def prepare_data(data, num_signals, num_segments, segment_length):
     return prepared_data
 
 # Conversione dei dati in un tensore di dimensioni (num_signals, num_segments, segment_length)
-def prepare_classification_data(data, labels, num_signals, num_segments, segment_length, label):
+def classification_data_to_tensor(data, labels, num_signals, num_segments, segment_length, label):
     
     # Conversione dati in tensore
     prepared_data = torch.zeros(num_signals, num_segments, segment_length)
@@ -94,11 +95,62 @@ def prepare_classification_data(data, labels, num_signals, num_segments, segment
     return prepared_data, prepared_labels
 
 
-# Collate Function per il DataLoader
+# Collate Function per i batch del pretraining
 def pretrain_collate_fn(batch):
 
     return torch.stack([item[0] for item in batch])
 
+# Collate Function per i batch della classificazione
 def classification_collate_fn(batch):
 
     return torch.stack([item[0] for item in batch]), torch.tensor([item[1] for item in batch])
+
+# Caricamento dati e creazione dataloaders per pretraining
+def get_pretraining_dataloaders(config, device):
+    # Caricamento e preparazione dei dati
+    data = load_unlabeled_data(config['data_path'], config['signals'])
+    # Split dei dati
+    train, val = pretrain_data_split(data, config['val_ratio'], config['signals'])
+    num_train_segments = len(train[next(iter(train))].groupby('segment_id'))
+    num_val_segments = len(val[next(iter(val))].groupby('segment_id'))
+    # Conversione dati in tensori
+    train_data = pretraining_data_to_tensor(train, config['num_signals'], num_train_segments, config['segment_length'])
+    val_data = pretraining_data_to_tensor(val, config['num_signals'], num_val_segments, config['segment_length'])
+    # Creazione del DataLoader
+    train_data = train_data.permute(1, 0, 2).to(device)
+    val_data = val_data.permute(1, 0, 2).to(device)
+    train_dataset = TensorDataset(train_data)
+    val_dataset = TensorDataset(val_data)
+    train_dataloader = DataLoader(train_dataset, batch_size=config['batch_size'], shuffle=True, drop_last=True, collate_fn=pretrain_collate_fn)
+    val_dataloader = DataLoader(val_dataset, batch_size=config['batch_size'], shuffle=True, drop_last=True, collate_fn=pretrain_collate_fn)    
+
+    return train_dataloader, val_dataloader
+
+# Caricamento dati e creazione dataloaders per classificazione
+def get_classification_dataloaders(config, device):
+    # Caricamento e preparazione dei dati
+    data, labels = load_labeled_data(config['data_path'], config['signals'], config['label'])
+    # Split dei dati
+    train, train_labels, val, val_labels, test, test_labels = classification_data_split(data, labels, config['val_ratio'], config['test_ratio'], config['signals'])
+    num_train_segments = len(train[config['signals'][0]].groupby('segment_id'))
+    num_val_segments = len(val[config['signals'][0]].groupby('segment_id'))
+    num_test_segments = len(test[config['signals'][0]].groupby('segment_id'))
+    # Preparazione dati
+    train_data, train_labels = classification_data_to_tensor(train, train_labels, config['num_signals'], num_train_segments, config['segment_length'], config['label'])
+    val_data, val_labels = classification_data_to_tensor(val, val_labels, config['num_signals'], num_val_segments, config['segment_length'], config['label'])
+    test_data, test_labels = classification_data_to_tensor(test, test_labels, config['num_signals'], num_test_segments, config['segment_length'], config['label'])
+    # Creazione del DataLoader
+    train_data = train_data.permute(1, 0, 2).to(device)
+    val_data = val_data.permute(1, 0, 2).to(device)
+    test_data = test_data.permute(1, 0, 2).to(device)
+    train_labels = train_labels.to(device)
+    val_labels = val_labels.to(device)
+    test_labels = test_labels.to(device)
+    train_dataset = TensorDataset(train_data, train_labels)
+    val_dataset = TensorDataset(val_data, val_labels)
+    test_dataset = TensorDataset(test_data, test_labels)
+    train_dataloader = DataLoader(train_dataset, batch_size=config['batch_size'], shuffle=True, drop_last=True, collate_fn=classification_collate_fn)
+    val_dataloader = DataLoader(val_dataset, batch_size=config['batch_size'], shuffle=True, drop_last=True, collate_fn=classification_collate_fn)
+    test_dataloader = DataLoader(test_dataset, batch_size=config['batch_size'], shuffle=True, drop_last=True, collate_fn=classification_collate_fn)
+
+    return train_dataloader, val_dataloader, test_dataloader

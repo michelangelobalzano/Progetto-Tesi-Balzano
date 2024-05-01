@@ -28,24 +28,24 @@ def generate_masks(batch_size, masking_ratio, lm, num_signals, segment_length, d
 
 '''
 # Generazione di una maschera per ogni segnale e segmento
-def generate_masks(batch_size, masking_ratio, lm, num_signals, segment_length, device):
+def generate_masks(config, device):
 
     # Creazione maschere impostate a 1
-    masks = torch.ones(batch_size, num_signals, segment_length, device=device, dtype=torch.bool)
+    masks = torch.ones(config['batch_size'], config['num_signals'], config['segment_length'], device=device, dtype=torch.bool)
     # Calcolo del numero degli zeri per maschera
-    num_zeros = int(segment_length * masking_ratio)    
+    num_zeros = int(config['segment_length'] * config['masking_ratio'])    
     # Calcolo del numero di sequenze di zeri
-    num_sequences = num_zeros // lm
+    num_sequences = num_zeros // config['lm']
 
-    for b in range(batch_size):
-        for f in range(num_signals):
+    for b in range(config['batch_size']):
+        for f in range(config['num_signals']):
             # Creazione maschera per singolo segmento del batch e per singolo segnale impostata a 1
-            mask = torch.ones(segment_length, dtype=bool).to(device)
+            mask = torch.ones(config['segment_length'], dtype=bool).to(device)
             # Generazione di indici casuali per gli inizi delle sequenze di zeri
-            idx = generate_random_start_idx(num_sequences, 0, segment_length - lm - 1, lm)
+            idx = generate_random_start_idx(num_sequences, 0, config['segment_length'] - config['lm'] - 1, config['lm'])
             # Azzeramento delle sequenze
             for id in idx:
-                mask[id:id + lm] = 0
+                mask[id:id + config['lm']] = 0
 
             masks[b][f] = mask
 
@@ -67,30 +67,25 @@ def generate_random_start_idx(num_numbers, range_start, range_end, distance):
     return numbers
 
 # Caricamento modello preaddestrato per continuare pretraining o per classificare
-def load_pretrained_model(model, model_path, model_name, task, freeze=False):
-    if task == 'pretraining': # Si continua a effettuare pretraining
-        # Caricamento del modello
-        model.load_state_dict(torch.load(model_path + 'pretraining_' + model_name + '.pth'))
-    elif task == 'classification': # Si usa il modello preaddestrato per classificare
-        stato_modello = torch.load(model_path + 'pretraining_' + model_name + '.pth')
-        # Eliminazione output layer transformer
-        output_layer_keys = ['output_layer.weight', 'output_layer.bias']
-        stato_modello = {key: value for key, value in stato_modello.items() if key not in output_layer_keys}
-        # Caricamento del modello senza output layer
-        model.load_state_dict(stato_modello, strict=False)
-        # Freeze o fine-tuning dei pesi
-        if freeze:
-            for name, param in model.named_parameters():
-                if name.startswith('output_layer'):
-                    param.requires_grad = True
-                else:
-                    param.requires_grad = False
+def load_pretrained_model(model, config):
+    stato_modello = torch.load(config['model_path'] + 'pretraining_' + config['model_to_load'] + '.pth')
+    # Eliminazione output layer transformer
+    output_layer_keys = ['output_layer.weight', 'output_layer.bias']
+    stato_modello = {key: value for key, value in stato_modello.items() if key not in output_layer_keys}
+    # Caricamento del modello senza output layer
+    model.load_state_dict(stato_modello, strict=False)
+    # Freeze o fine-tuning dei pesi
+    if config['freeze']:
+        for name, param in model.named_parameters():
+            if name.startswith('output_layer'):
+                param.requires_grad = True
+            else:
+                param.requires_grad = False
     return model
 
 # Caricamento parametri modello preaddestrato per classificare
-def load_pretrained_model_params(model_name, info_path):
-    model_parameters = {}
-    with open(info_path + 'pretraining_' + model_name + '.csv', newline='') as csvfile:
+def load_pretrained_model_params(config):
+    with open(config['info_path'] + 'pretraining_' + config['model_to_load'] + '.csv', newline='') as csvfile:
         reader = csv.reader(csvfile)
         for row_number, row in enumerate(reader):
             if 1 <= row_number <= 6: # Lettura parametri modello
@@ -101,10 +96,10 @@ def load_pretrained_model_params(model_name, info_path):
                     valore = float(row[1])
                 elif row[0] == 'pe_type':
                     valore = row[1]
-                model_parameters[chiave] = valore
+                config[chiave] = valore
             elif row_number > 6:
                 break
-    return model_parameters
+    return config
 
 # Salvataggio del modello
 def save_model(model, model_path, name, task):
@@ -113,21 +108,21 @@ def save_model(model, model_path, name, task):
 
 # Salvataggio info pretraining
 def save_pretraining_info(model_name, 
-                          info_path, 
-                          model_parameters, 
-                          masking_parameters,
+                          config,
                           epoch_info,
                           num_epochs,
                           elapsed_time):
-    with open(info_path + 'pretraining_' + model_name + '.csv', mode='w', newline='') as file:
+    with open(config['info_path'] + 'pretraining_' + model_name + '.csv', mode='w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(['task', 'pretraining'])
         # Parametri modello
-        for key, value in model_parameters.items():
-            writer.writerow([key, value])
+        model_params = ['batch_size', 'd_model', 'dim_feedforward', 'dropout', 'num_heads', 'num_layers', 'pe_type']
+        for param in model_params:
+            writer.writerow([param, config[param]])
         # Parametri mascheramento
-        for key, value in masking_parameters.items():
-            writer.writerow([key, value])
+        masking_params = ['masking_ratio', 'lm']
+        for param in masking_params:
+            writer.writerow([param, config[param]])
         writer.writerow(['num. epochs', num_epochs])
         writer.writerow(['elapsed time', elapsed_time])
         writer.writerow(['time per epoch', elapsed_time / num_epochs])
@@ -141,20 +136,19 @@ def save_pretraining_info(model_name,
 
 # Salvataggio info classificazione
 def save_classification_info(model_name, 
-                             info_path, 
-                             model_parameters,
-                             label,
+                             config,
                              epoch_info,
                              num_epochs,
                              elapsed_time,
                              test_info=None):
-    with open(info_path + 'classification_' + model_name + '.csv', mode='w', newline='') as file:
+    with open(config['info_path'] + 'classification_' + model_name + '.csv', mode='w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(['task', 'classification'])
-        writer.writerow(['label', label])
+        writer.writerow(['label', config['label']])
         # Parametri modello
-        for key, value in model_parameters.items():
-            writer.writerow([key, value])
+        model_params = ['batch_size', 'd_model', 'dim_feedforward', 'dropout', 'num_heads', 'num_layers', 'pe_type']
+        for param in model_params:
+            writer.writerow([param, config[param]])
         writer.writerow(['num. epochs', num_epochs])
         writer.writerow(['elapsed time', elapsed_time])
         writer.writerow(['time per epoch', elapsed_time / num_epochs])

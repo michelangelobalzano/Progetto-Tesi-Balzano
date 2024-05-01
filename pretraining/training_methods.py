@@ -29,7 +29,7 @@ def pretraining_loss(predictions, true, masks):
     return rmse_loss
 
 # Train di un epoca
-def train_pretrain_model(model, dataloader, num_signals, segment_length, batch_size, masking_parameters, optimizer, device):
+def train_pretrain_model(model, dataloader, config, optimizer, device):
     
     model.train()
     train_loss = 0.0
@@ -39,8 +39,7 @@ def train_pretrain_model(model, dataloader, num_signals, segment_length, batch_s
     for batch in dataloader:
         
         optimizer.zero_grad() # Azzeramento dei gradienti
-        masks = generate_masks(batch_size, masking_parameters['masking_ratio'], 
-                               masking_parameters['lm'], num_signals, segment_length, device) # Maschera booleana: 1 = mantenere, 0 = mascherare
+        masks = generate_masks(config, device) # Maschera booleana: 1 = mantenere, 0 = mascherare
         masked_batch = batch * masks # Applicazione della maschera
         predictions = model(masked_batch) # Passaggio del batch al modello
         loss = pretraining_loss(predictions, batch, masks) # Calcolo della loss
@@ -54,7 +53,7 @@ def train_pretrain_model(model, dataloader, num_signals, segment_length, batch_s
     return train_loss / num_batches
 
 # Validation di un epoca
-def validate_pretrain_model(model, dataloader, num_signals, segment_length, batch_size, masking_parameters, device):
+def validate_pretrain_model(model, dataloader, config, device):
     
     model.eval()
     val_loss = 0.0
@@ -65,8 +64,7 @@ def validate_pretrain_model(model, dataloader, num_signals, segment_length, batc
         progress_bar = tqdm(total=num_batches, desc="Val batch analizzati")
         for batch in dataloader:
             
-            masks = generate_masks(batch_size, masking_parameters['masking_ratio'], 
-                                   masking_parameters['lm'], num_signals, segment_length, device) # Maschera booleana: 1 = mantenere, 0 = mascherare
+            masks = generate_masks(config, device) # Maschera booleana: 1 = mantenere, 0 = mascherare
             masked_batch = batch * masks # Applicazione della maschera
             predictions = model(masked_batch) # Passaggio del batch al modello
             loss = pretraining_loss(predictions, batch, masks) # Calcolo della loss

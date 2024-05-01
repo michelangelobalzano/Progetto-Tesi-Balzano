@@ -196,22 +196,23 @@ class MyEncoderLayer(nn.modules.Module):
         return data
 
 class TSTransformer(nn.Module):
-    def __init__(self, num_signals, segment_length, iperparametri, device, pe_type='learnable'):
+    def __init__(self, config, device):
         super(TSTransformer, self).__init__()
 
-        self.num_signals = num_signals
-        self.segment_length = segment_length
-        self.d_model = iperparametri['d_model']
-        self.dim_feedforward = iperparametri['dim_feedforward']
-        self.dropout = iperparametri['dropout']
-        self.num_layers = iperparametri['num_layers']
-        self.num_heads = iperparametri['num_heads']
+        self.num_signals = config['num_signals']
+        self.segment_length = config['segment_length']
+        self.d_model = config['d_model']
+        self.dim_feedforward = config['dim_feedforward']
+        self.dropout = config['dropout']
+        self.num_layers = config['num_layers']
+        self.num_heads = config['num_heads']
+        self.pe_type = config['pe_type']
         self.device = device
 
         self.project_inp = nn.Linear(self.num_signals, self.d_model)
-        if pe_type == 'learnable':
+        if self.pe_type == 'learnable':
             self.pos_enc = LearnablePositionalEncoding(self.segment_length, self.d_model, self.dropout)
-        elif pe_type == 'fixed':
+        elif self.pe_type == 'fixed':
             self.pos_enc = FixedPositionalEncoding(self.segment_length, self.d_model, self.dropout, self.device)
         encoder_layer = MyEncoderLayer(self.d_model, self.dim_feedforward, self.num_heads, self.dropout)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, self.num_layers)
@@ -237,27 +238,28 @@ class TSTransformer(nn.Module):
         return output # [batch_size, num_signals, segment_length]
 
 class TSTransformerClassifier(nn.Module):
-    def __init__(self, num_signals, segment_length, iperparametri, num_classes, device, pe_type='learnable'):
+    def __init__(self, config, device):
         super(TSTransformerClassifier, self).__init__()
 
-        self.num_signals = num_signals
-        self.segment_length = segment_length
-        self.d_model = iperparametri['d_model']
-        self.dim_feedforward = iperparametri['dim_feedforward']
-        self.dropout = iperparametri['dropout']
-        self.num_layers = iperparametri['num_layers']
-        self.num_heads = iperparametri['num_heads']
+        self.num_signals = config['num_signals']
+        self.segment_length = config['segment_length']
+        self.d_model = config['d_model']
+        self.dim_feedforward = config['dim_feedforward']
+        self.dropout = config['dropout']
+        self.num_layers = config['num_layers']
+        self.num_heads = config['num_heads']
+        self.num_classes = config['num_classes']
+        self.pe_type = config['pe_type']
         self.device = device
-        self.num_classes = num_classes
 
         self.project_inp = nn.Linear(self.num_signals, self.d_model)
-        if pe_type == 'learnable':
+        if self.pe_type == 'learnable':
             self.pos_enc = LearnablePositionalEncoding(self.segment_length, self.d_model, self.dropout)
-        elif pe_type == 'fixed':
+        elif self.pe_type == 'fixed':
             self.pos_enc = FixedPositionalEncoding(self.segment_length, self.d_model, self.dropout, self.device)
         encoder_layer = MyEncoderLayer(self.d_model, self.dim_feedforward, self.num_heads, self.dropout)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, self.num_layers, mask_check=False, enable_nested_tensor=False)
-        self.output_layer = nn.Linear(self.d_model * segment_length, num_classes)
+        self.output_layer = nn.Linear(self.d_model * self.segment_length, self.num_classes)
         self.act = F.gelu
         self.dropout1 = nn.Dropout(self.dropout)
 
