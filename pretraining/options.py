@@ -26,10 +26,16 @@ class Options(object):
                                  help='Numero epoche di addestramento.')
         self.parser.add_argument('--num_epochs_to_save', type=int, default=10,
                                  help='Numero epoche per salvataggio automatico.')
+        self.parser.add_argument('--learning_rate', type=float, default=0.001,
+                                 help='Learning rate.')
         self.parser.add_argument('--patience', type=int, default=10,
                                  help='Numero epoche pazienza di non miglioramento.')
-        self.parser.add_argument('--max_lr_reductions', type=int, default=2,
+        self.parser.add_argument('--max_lr_reductions', type=int, default=3,
                                  help='Numero massimo di riduzioni del learning rate.')
+        self.parser.add_argument('--factor', type=float, default=0.3,
+                                 help='Fattore riduzione learning rate.')
+        self.parser.add_argument('--threshold', type=float, default=0.001,
+                                 help='Soglia di tolleranza non miglioramento.')
         self.parser.add_argument('--model_to_load', type=str, default='',
                                  help='Nome modello preaddestrato da caricare (solo per classificazione).')
         self.parser.add_argument('--freeze', action='store_true',

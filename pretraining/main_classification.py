@@ -59,8 +59,7 @@ def main(config):
     test_info = {}
     start_time = time.time()
     num_lr_reductions = 0
-    best_val_loss = np.inf
-    epochs_without_improvement = 0
+    current_lr = config['learning_rate']
 
     for epoch in range(config['num_epochs']):
         
@@ -86,19 +85,12 @@ def main(config):
 
         # Aggiorna lo scheduler della velocità di apprendimento in base alla loss di validazione
         scheduler.step(val_loss)
-
-        # Early stopping
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            epochs_without_improvement = 0
-        else:
-            epochs_without_improvement += 1
-        if epochs_without_improvement >= config['patience']:
+        if scheduler._last_lr != current_lr:
             num_lr_reductions += 1
-            epochs_without_improvement = 0
-            if num_lr_reductions > config['max_lr_reductions']:
-                print('Arresto anticipato')
-                break
+            current_lr = scheduler._last_lr
+        if num_lr_reductions > config['max_lr_reductions']:
+            print('Early stopped')
+            break
 
         # Ogni tot epoche effettua un salvataggio del modello
         if config['num_epochs_to_save'] is not None:

@@ -32,13 +32,13 @@ def main(config):
     current_datetime = datetime.now()
     model_name = current_datetime.strftime("%m-%d_%H-%M")
     # Definizione dell'ottimizzatore (AdamW)
-    optimizer = optim.AdamW(model.parameters(), lr=0.001)
+    optimizer = optim.AdamW(model.parameters(), lr=config['learning_rate'])
     # Definizione dello scheduler di apprendimento
     scheduler = ReduceLROnPlateau(optimizer, 
                                 mode='min', 
-                                factor=0.3, 
+                                factor=config['factor'], 
                                 patience=config['patience'], 
-                                threshold=1e-4, 
+                                threshold=config['threshold'], 
                                 threshold_mode='rel', 
                                 cooldown=0, 
                                 min_lr=0, 
@@ -48,8 +48,7 @@ def main(config):
     epoch_info = {'train_losses': [], 'val_losses': []}
     start_time = time.time()
     num_lr_reductions = 0
-    best_val_loss = np.inf
-    epochs_without_improvement = 0
+    current_lr = config['learning_rate']
 
     for epoch in range(config['num_epochs']):
         print(f'\nEPOCH: {epoch + 1}')
@@ -66,19 +65,12 @@ def main(config):
 
         # Aggiorna lo scheduler della velocità di apprendimento in base alla loss di validazione
         scheduler.step(val_loss)
-        
-        # Early stopping
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            epochs_without_improvement = 0
-        else:
-            epochs_without_improvement += 1
-        if epochs_without_improvement >= config['patience']:
+        if scheduler._last_lr != current_lr:
             num_lr_reductions += 1
-            epochs_without_improvement = 0
-            if num_lr_reductions > config['max_lr_reductions']:
-                print('Early stopped')
-                break
+            current_lr = scheduler._last_lr
+        if num_lr_reductions > config['max_lr_reductions']:
+            print('Early stopped')
+            break
 
         # Ogni tot epoche effettua un salvataggio del modello
         if config['num_epochs_to_save'] is not None:
