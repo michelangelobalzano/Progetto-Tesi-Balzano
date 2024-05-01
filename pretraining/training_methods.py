@@ -6,7 +6,6 @@ from tqdm import tqdm
 from graphs_methods import try_graph
 from torch.nn import functional as F
 
-
 # Calcolo della loss per la classificazione
 def classification_loss(predictions, labels):
 
@@ -29,7 +28,7 @@ def pretraining_loss(predictions, true, masks):
     return rmse_loss
 
 # Train di un epoca
-def train_pretrain_model(model, dataloader, config, optimizer, device):
+def train_pretrain_model(model, dataloader, optimizer):
     
     model.train()
     train_loss = 0.0
@@ -39,9 +38,7 @@ def train_pretrain_model(model, dataloader, config, optimizer, device):
     for batch in dataloader:
         
         optimizer.zero_grad() # Azzeramento dei gradienti
-        masks = generate_masks(config, device) # Maschera booleana: 1 = mantenere, 0 = mascherare
-        masked_batch = batch * masks # Applicazione della maschera
-        predictions = model(masked_batch) # Passaggio del batch al modello
+        predictions, masks = model(batch) # Passaggio del batch al modello
         loss = pretraining_loss(predictions, batch, masks) # Calcolo della loss
         loss.backward() # Aggiornamento dei pesi
         optimizer.step()
@@ -53,7 +50,7 @@ def train_pretrain_model(model, dataloader, config, optimizer, device):
     return train_loss / num_batches
 
 # Validation di un epoca
-def validate_pretrain_model(model, dataloader, config, device):
+def validate_pretrain_model(model, dataloader):
     
     model.eval()
     val_loss = 0.0
@@ -64,13 +61,9 @@ def validate_pretrain_model(model, dataloader, config, device):
         progress_bar = tqdm(total=num_batches, desc="Val batch analizzati")
         for batch in dataloader:
             
-            masks = generate_masks(config, device) # Maschera booleana: 1 = mantenere, 0 = mascherare
-            masked_batch = batch * masks # Applicazione della maschera
-            predictions = model(masked_batch) # Passaggio del batch al modello
+            predictions, masks = model(batch) # Passaggio del batch al modello
             loss = pretraining_loss(predictions, batch, masks) # Calcolo della loss
             val_loss += loss.item() # Accumulo della loss
-
-            #try_graph(batch[0], masks[0], predictions[0], num_signals, segment_length)
 
             progress_bar.update(1)
         progress_bar.close()

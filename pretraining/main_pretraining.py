@@ -54,16 +54,9 @@ def main(config):
     for epoch in range(config['num_epochs']):
         print(f'\nEPOCH: {epoch + 1}')
         # Training
-        train_loss = train_pretrain_model(model, 
-                                        train_dataloader, 
-                                        config, 
-                                        optimizer, 
-                                        device)
+        train_loss = train_pretrain_model(model, train_dataloader, optimizer)
         # Validation
-        val_loss = validate_pretrain_model(model, 
-                                        val_dataloader, 
-                                        config,
-                                        device)
+        val_loss = validate_pretrain_model(model, val_dataloader)
 
         print(f"Epoch {epoch+1}/{config['num_epochs']}, Train Loss: {train_loss}, Val Loss: {val_loss}")
 

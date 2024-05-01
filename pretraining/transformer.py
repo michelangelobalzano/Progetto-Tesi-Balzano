@@ -4,6 +4,8 @@ from torch import nn, Tensor
 import torch.nn.functional as F
 from torch.nn.modules import MultiheadAttention, Linear, Dropout, BatchNorm1d
 import math
+
+from utils import generate_masks
 '''
 class PositionalEncoding(nn.Module):
     def __init__(self, d_model, dropout, max_len=240):
@@ -199,6 +201,8 @@ class TSTransformer(nn.Module):
     def __init__(self, config, device):
         super(TSTransformer, self).__init__()
 
+        self.config = config
+
         self.num_signals = config['num_signals']
         self.segment_length = config['segment_length']
         self.d_model = config['d_model']
@@ -222,20 +226,24 @@ class TSTransformer(nn.Module):
         
     def forward(self, data):
 
-        # Dimensione data input: [batch_size, num_signals, segment_length]
-        inp = data.permute(2, 0, 1) # [segment_length, batch_size, num_signals]
-        # Moltiplicazione per la redice quadrata di d_model per scalare l'input
-        # come descritto nel paper "Attention is All You Need"
-        inp = self.project_inp(inp) * math.sqrt(self.d_model) # [segment_length, batch_size, d_model]
-        inp = self.pos_enc(inp) # Aggiunta del positional encoding
-        output = self.transformer_encoder(inp) # [segment_length, batch_size, d_model]
+        masks = generate_masks(self.config, self.device) # Maschera booleana: 1 = mantenere, 0 = mascherare
+        masked_data = data * masks # Applicazione della maschera
+
+        masked_data = data.permute(2, 0, 1)
+        masked_data = self.project_inp(masked_data) * math.sqrt(self.d_model)
+        data = data.permute(2, 0, 1)
+        data = self.project_inp(data) * math.sqrt(self.d_model)
+
+        masked_data = self.pos_enc(data)
+
+        output = self.transformer_encoder(masked_data) # [segment_length, batch_size, d_model]
         output = self.act(output) # Funzione di attivazione
         output = output.permute(1, 0, 2)  # [batch_size, segment_length, d_model]
         output = self.dropout1(output) # Dropout
         output = self.output_layer(output) # [batch_size, segment_length, num_signals]
         output = output.permute(0, 2, 1) # [batch_size, num_signals, segment_length]
 
-        return output # [batch_size, num_signals, segment_length]
+        return output, masks # [batch_size, num_signals, segment_length]
 
 class TSTransformerClassifier(nn.Module):
     def __init__(self, config, device):
