@@ -3,15 +3,17 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from transformer import TSTransformer
 import torch
 import optuna
+from datetime import datetime
+import csv
 from data_preparation import get_pretraining_dataloaders
 from training_methods import train_pretrain_model, validate_pretrain_model
 from options import Options
 
-def objective(trial, config, device):
+def objective(trial, config, device, run_name):
     batch_size = trial.suggest_categorical('batch_size', [32, 64, 128, 256])
     d_model = trial.suggest_categorical('d_model', [32, 64, 128, 256])
     dim_feedforward = trial.suggest_categorical('dim_feedforward', [128, 256, 512, 1024, 2048])
-    dropout = trial.suggest_float('dropout', 0.1, 0.5)
+    dropout = round(trial.suggest_float('dropout', 0.1, 0.5), 2)
     num_heads = trial.suggest_categorical('num_heads', [2, 4, 8])
     num_layers = trial.suggest_int('num_layers', 2, 6)
     pe_type = trial.suggest_categorical('pe_type', ['fixed', 'learnable'])
@@ -46,6 +48,10 @@ def objective(trial, config, device):
         val_loss = validate_pretrain_model(model, val_dataloader)
         
         scheduler.step(val_loss)
+
+    with open('sessions\\pretraining_optimization' + run_name + '.csv', mode='a', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow([val_loss, batch_size, d_model, dim_feedforward, dropout, num_heads, num_layers, pe_type])
     
     # Restituisci l'ultimo valore di perdita di validazione
     return val_loss
@@ -54,13 +60,19 @@ def main (config):
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+    current_datetime = datetime.now()
+    run_name = current_datetime.strftime("%m-%d_%H-%M")
+    with open('sessions\\pretraining_optimization' + run_name + '.csv', mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['loss', 'batch_size', 'd_model', 'dim_feedforward', 'dropout', 'num_heads', 'num_layers', 'pe_type'])
+
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
     study = optuna.create_study(direction='minimize')
     study.optimize(lambda trial: objective(trial, 
                                         config, 
-                                        device), 
+                                        device,
+                                        run_name), 
                                         n_trials=config['num_optimization_trials'])
-    print('Migliori iperparametri:', study.best_params)
-    print('Miglior valore di perdita:', study.best_value)
 
 args = Options().parse()
 config = args.__dict__
