@@ -28,7 +28,6 @@ def objective(trial, config, device, run_name):
     
     train_dataloader, val_dataloader = get_pretraining_dataloaders(config, device)
 
-    # Costruzione del modello con i parametri suggeriti
     model = TSTransformer(config, device)
     model = model.to(device)
     optimizer = optim.AdamW(model.parameters(), lr=config['learning_rate'])
@@ -42,7 +41,6 @@ def objective(trial, config, device, run_name):
                                 min_lr=0, 
                                 eps=1e-8)
     
-    # Addestramento del modello per un numero fisso di epoche
     for _ in range(config['num_optimization_epochs']):
         _ = train_pretrain_model(model, train_dataloader, optimizer)
         val_loss = validate_pretrain_model(model, val_dataloader)
@@ -51,28 +49,43 @@ def objective(trial, config, device, run_name):
 
     with open('sessions\\pretraining_optimization' + run_name + '.csv', mode='a', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow([val_loss, batch_size, d_model, dim_feedforward, dropout, num_heads, num_layers, pe_type])
+        writer.writerow([trial.number, val_loss, batch_size, d_model, dim_feedforward, dropout, num_heads, num_layers, pe_type])
     
-    # Restituisci l'ultimo valore di perdita di validazione
     return val_loss
 
 def main (config):
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+    # Creazione file salvataggio sessione
     current_datetime = datetime.now()
     run_name = current_datetime.strftime("%m-%d_%H-%M")
     with open('sessions\\pretraining_optimization' + run_name + '.csv', mode='w', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow(['loss', 'batch_size', 'd_model', 'dim_feedforward', 'dropout', 'num_heads', 'num_layers', 'pe_type'])
+        writer.writerow(['trial num.', 'loss', 'batch_size', 'd_model', 'dim_feedforward', 'dropout', 'num_heads', 'num_layers', 'pe_type'])
 
-    optuna.logging.set_verbosity(optuna.logging.WARNING)
+    optuna.logging.set_verbosity(optuna.logging.WARNING) # Eliminazione stampe studio
     study = optuna.create_study(direction='minimize')
     study.optimize(lambda trial: objective(trial, 
                                         config, 
                                         device,
                                         run_name), 
                                         n_trials=config['num_optimization_trials'])
+    
+    # Scrittura migliori iperparametri su file salvataggio
+    with open('sessions\\pretraining_optimization' + run_name + '.csv', mode='a', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow([])
+        writer.writerow(['Best trial:'])
+        writer.writerow([study.best_trial.number,
+                         study.best_value, 
+                         study.best_params['batch_size'], 
+                         study.best_params['d_model'], 
+                         study.best_params['dim_feedforward'], 
+                         study.best_params['dropout'], 
+                         study.best_params['num_heads'], 
+                         study.best_params['num_layers'], 
+                         study.best_params['pe_type']])
 
 args = Options().parse()
 config = args.__dict__
