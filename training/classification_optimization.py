@@ -41,15 +41,15 @@ def objective(trial, config, device, run_name):
                                 min_lr=0, 
                                 eps=1e-8)
 
-    for _ in range(config['num_optimization_epochs']):
-        _ = train_classification_model(model, train_dataloader, optimizer, device)
-        val_loss, val_accuracy = val_classification_model(model, val_dataloader, device, task='Validation')
+    for epoch in range(config['num_optimization_epochs']):
+        _ = train_classification_model(model, train_dataloader, optimizer, device, epoch)
+        val_loss, val_accuracy = val_classification_model(model, val_dataloader, device, epoch, task='validation')
         
         scheduler.step(val_loss)
 
     with open('sessions\\classification_optimization_' + run_name + '.csv', mode='a', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow([trial.number, val_accuracy, batch_size, d_model, dim_feedforward, dropout, num_heads, num_layers, pe_type])
+        writer.writerow([trial.number+1, val_accuracy, batch_size, d_model, dim_feedforward, dropout, num_heads, num_layers, pe_type])
 
     print(f'trial {trial.number + 1}/{config["num_optimization_trials"]} conclusa con accuracy {val_accuracy}.')
     
@@ -79,7 +79,7 @@ def main(config):
         writer = csv.writer(file)
         writer.writerow([])
         writer.writerow(['Best trial:'])
-        writer.writerow([study.best_trial.number,
+        writer.writerow([study.best_trial.number+1,
                          study.best_value, 
                          study.best_params['batch_size'], 
                          study.best_params['d_model'], 

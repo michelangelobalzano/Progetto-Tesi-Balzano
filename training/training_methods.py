@@ -26,13 +26,13 @@ def pretraining_loss(predictions, true, masks):
     return rmse_loss
 
 # Train di un epoca
-def train_pretrain_model(model, dataloader, optimizer):
+def train_pretrain_model(model, dataloader, optimizer, epoch):
     
     model.train()
     train_loss = 0.0
     num_batches = len(dataloader)
 
-    progress_bar = tqdm(total=num_batches, desc="Train batch analizzati", leave=False)
+    progress_bar = tqdm(total=num_batches, desc=f"Epoch {epoch + 1} training", leave=False)
     for batch in dataloader:
         
         optimizer.zero_grad() # Azzeramento dei gradienti
@@ -48,7 +48,7 @@ def train_pretrain_model(model, dataloader, optimizer):
     return train_loss / num_batches
 
 # Validation di un epoca
-def validate_pretrain_model(model, dataloader):
+def validate_pretrain_model(model, dataloader, epoch):
     
     model.eval()
     val_loss = 0.0
@@ -56,7 +56,7 @@ def validate_pretrain_model(model, dataloader):
 
     with torch.no_grad():
         
-        progress_bar = tqdm(total=num_batches, desc="Val batch analizzati", leave=False)
+        progress_bar = tqdm(total=num_batches, desc=f"Epoch {epoch + 1} validation", leave=False)
         for batch in dataloader:
             
             predictions, masks = model(batch) # Passaggio del batch al modello
@@ -70,13 +70,13 @@ def validate_pretrain_model(model, dataloader):
     return val_loss / num_batches
 
 # Train di un epoca
-def train_classification_model(model, dataloader, optimizer, device):
+def train_classification_model(model, dataloader, optimizer, device, epoch):
     
     model.train()
     train_loss = 0.0
     num_batches = len(dataloader)
 
-    progress_bar = tqdm(total=num_batches, desc="Train batch analizzati", leave=False)
+    progress_bar = tqdm(total=num_batches, desc=f"Epoch {epoch + 1} training", leave=False)
     for batch in dataloader:
         X, labels = batch
         X = X.to(device)
@@ -94,7 +94,7 @@ def train_classification_model(model, dataloader, optimizer, device):
 
     return train_loss / num_batches
 
-def val_classification_model(model, dataloader, device, task):
+def val_classification_model(model, dataloader, device, epoch, task):
 
     model.eval()
     val_loss = 0.0
@@ -102,7 +102,7 @@ def val_classification_model(model, dataloader, device, task):
     total = 0
     num_batches = len(dataloader)
 
-    progress_bar = tqdm(total=num_batches, desc=f"{task} batch analizzati", leave=False)
+    progress_bar = tqdm(total=num_batches, desc=f"Epoch {epoch + 1} {task}", leave=False)
     with torch.no_grad():
         for batch in dataloader:
             X, labels = batch

@@ -68,11 +68,13 @@ def main(config):
         train_loss = train_classification_model(model, 
                                                 train_dataloader, 
                                                 optimizer, 
-                                                device)
+                                                device, 
+                                                epoch)
         # Validation
         val_loss, val_accuracy = val_classification_model(model, 
                                                         val_dataloader, 
                                                         device, 
+                                                        epoch, 
                                                         task='validation')
 
         print(f"Epoch {epoch+1}/{config['num_epochs']}, Train Loss: {train_loss}, Val Loss: {val_loss}, Accuracy: {val_accuracy}")
