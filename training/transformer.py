@@ -218,7 +218,7 @@ class TSTransformer(nn.Module):
         elif self.pe_type == 'fixed':
             self.pos_enc = FixedPositionalEncoding(self.segment_length, self.d_model, self.dropout, self.device)
         encoder_layer = MyEncoderLayer(self.d_model, self.dim_feedforward, self.num_heads, self.dropout)
-        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, self.num_layers)
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, self.num_layers, mask_check=False, enable_nested_tensor=False)
         self.output_layer = nn.Linear(self.d_model, self.num_signals)
         self.act = F.gelu
         self.dropout1 = nn.Dropout(self.dropout)

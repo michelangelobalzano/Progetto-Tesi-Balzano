@@ -47,7 +47,7 @@ def objective(trial, config, device, run_name):
         
         scheduler.step(val_loss)
 
-    with open('sessions\\pretraining_optimization' + run_name + '.csv', mode='a', newline='') as file:
+    with open('sessions\\pretraining_optimization_' + run_name + '.csv', mode='a', newline='') as file:
         writer = csv.writer(file)
         writer.writerow([trial.number, val_loss, batch_size, d_model, dim_feedforward, dropout, num_heads, num_layers, pe_type])
     
@@ -62,7 +62,7 @@ def main (config):
     # Creazione file salvataggio sessione
     current_datetime = datetime.now()
     run_name = current_datetime.strftime("%m-%d_%H-%M")
-    with open('sessions\\pretraining_optimization' + run_name + '.csv', mode='w', newline='') as file:
+    with open('sessions\\pretraining_optimization_' + run_name + '.csv', mode='w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(['trial num.', 'loss', 'batch_size', 'd_model', 'dim_feedforward', 'dropout', 'num_heads', 'num_layers', 'pe_type'])
 
@@ -75,7 +75,7 @@ def main (config):
                                         n_trials=config['num_optimization_trials'])
     
     # Scrittura migliori iperparametri su file salvataggio
-    with open('sessions\\pretraining_optimization' + run_name + '.csv', mode='a', newline='') as file:
+    with open('sessions\\pretraining_optimization_' + run_name + '.csv', mode='a', newline='') as file:
         writer = csv.writer(file)
         writer.writerow([])
         writer.writerow(['Best trial:'])
