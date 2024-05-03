@@ -12,7 +12,7 @@ class Options(object):
                                  help='Percorso directory dei dati preprocessati.')
         self.parser.add_argument('--info_path', type=str, default='sessions\\',
                                  help='Percorso directory salvataggio info sessioni.')
-        self.parser.add_argument('--model_path', type=str, default='pretraining\\models\\',
+        self.parser.add_argument('--model_path', type=str, default='training\\models\\',
                                  help='Percorso directory salvataggio modelli preaddestrati.')
         # Preparazione dati
         self.parser.add_argument('--val_ratio', type=int, default=15,

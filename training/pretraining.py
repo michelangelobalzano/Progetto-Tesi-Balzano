@@ -50,7 +50,6 @@ def main(config):
     current_lr = config['learning_rate']
 
     for epoch in range(config['num_epochs']):
-        print(f'\nEPOCH: {epoch + 1}')
         # Training
         train_loss = train_pretrain_model(model, train_dataloader, optimizer, epoch)
         # Validation
