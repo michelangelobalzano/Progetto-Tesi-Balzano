@@ -51,6 +51,8 @@ def objective(trial, config, device, run_name):
         writer = csv.writer(file)
         writer.writerow([trial.number, val_loss, batch_size, d_model, dim_feedforward, dropout, num_heads, num_layers, pe_type])
     
+    print(f'trial {trial.number + 1}/{config["num_optimization_trials"]} conclusa con accuracy {val_loss}.')
+
     return val_loss
 
 def main (config):

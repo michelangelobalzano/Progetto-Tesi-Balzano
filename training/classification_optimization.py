@@ -50,6 +50,8 @@ def objective(trial, config, device, run_name):
     with open('sessions\\classification_optimization' + run_name + '.csv', mode='a', newline='') as file:
         writer = csv.writer(file)
         writer.writerow([trial.number, val_accuracy, batch_size, d_model, dim_feedforward, dropout, num_heads, num_layers, pe_type])
+
+    print(f'trial {trial.number + 1}/{config["num_optimization_trials"]} conclusa con accuracy {val_accuracy}.')
     
     return val_accuracy
 

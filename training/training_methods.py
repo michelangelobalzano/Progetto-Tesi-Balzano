@@ -32,7 +32,7 @@ def train_pretrain_model(model, dataloader, optimizer):
     train_loss = 0.0
     num_batches = len(dataloader)
 
-    progress_bar = tqdm(total=num_batches, desc="Train batch analizzati")
+    progress_bar = tqdm(total=num_batches, desc="Train batch analizzati", leave=False)
     for batch in dataloader:
         
         optimizer.zero_grad() # Azzeramento dei gradienti
@@ -56,7 +56,7 @@ def validate_pretrain_model(model, dataloader):
 
     with torch.no_grad():
         
-        progress_bar = tqdm(total=num_batches, desc="Val batch analizzati")
+        progress_bar = tqdm(total=num_batches, desc="Val batch analizzati", leave=False)
         for batch in dataloader:
             
             predictions, masks = model(batch) # Passaggio del batch al modello
@@ -76,7 +76,7 @@ def train_classification_model(model, dataloader, optimizer, device):
     train_loss = 0.0
     num_batches = len(dataloader)
 
-    progress_bar = tqdm(total=num_batches, desc="Train batch analizzati")
+    progress_bar = tqdm(total=num_batches, desc="Train batch analizzati", leave=False)
     for batch in dataloader:
         X, labels = batch
         X = X.to(device)
@@ -102,7 +102,7 @@ def val_classification_model(model, dataloader, device, task):
     total = 0
     num_batches = len(dataloader)
 
-    progress_bar = tqdm(total=num_batches, desc=f"{task} batch analizzati")
+    progress_bar = tqdm(total=num_batches, desc=f"{task} batch analizzati", leave=False)
     with torch.no_grad():
         for batch in dataloader:
             X, labels = batch
