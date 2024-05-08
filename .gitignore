@@ -171,7 +171,7 @@ training/Scripts/
 training/Include
 training/Lib
 training/share
-training/models
+training/pretrained_models
 training/Library
 training/run_example.txt
 sessions/

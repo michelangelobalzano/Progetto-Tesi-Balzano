@@ -43,17 +43,17 @@ def objective(trial, config, device, run_name):
 
     for epoch in range(config['num_optimization_epochs']):
         _ = train_classification_model(model, train_dataloader, optimizer, device, epoch)
-        val_loss, val_accuracy = val_classification_model(model, val_dataloader, device, epoch, task='validation')
+        val_loss, accuracy, _, _, _ = val_classification_model(model, val_dataloader, device, epoch, task='validation')
         
         scheduler.step(val_loss)
 
     with open('sessions\\classification_optimization_' + run_name + '.csv', mode='a', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow([trial.number+1, val_accuracy, batch_size, d_model, dim_feedforward, dropout, num_heads, num_layers, pe_type])
+        writer.writerow([trial.number+1, accuracy, batch_size, d_model, dim_feedforward, dropout, num_heads, num_layers, pe_type])
 
-    print(f'trial {trial.number + 1}/{config["num_optimization_trials"]} conclusa con accuracy {val_accuracy}.')
+    print(f'trial {trial.number + 1}/{config["num_optimization_trials"]} conclusa con accuracy {accuracy}.')
     
-    return val_accuracy
+    return accuracy
 
 def main(config):
 

@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from sklearn.metrics import precision_score, recall_score, f1_score
 from utils import generate_masks
 from tqdm import tqdm
 from graphs_methods import try_graph
@@ -92,7 +93,9 @@ def train_classification_model(model, dataloader, optimizer, device, epoch):
         progress_bar.update(1)
     progress_bar.close()
 
-    return train_loss / num_batches
+    average_loss = round(train_loss / num_batches, 4)
+
+    return average_loss
 
 def val_classification_model(model, dataloader, device, epoch=None, task=''):
 
@@ -100,6 +103,8 @@ def val_classification_model(model, dataloader, device, epoch=None, task=''):
     val_loss = 0.0
     correct = 0
     total = 0
+    all_labels = []
+    all_predictions = []
     num_batches = len(dataloader)
 
     if epoch is not None:
@@ -121,14 +126,19 @@ def val_classification_model(model, dataloader, device, epoch=None, task=''):
             _, predicted = torch.max(predictions, 1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
+            all_labels.extend(labels.cpu().numpy())
+            all_predictions.extend(predicted.cpu().numpy())
 
             progress_bar.update(1)
     progress_bar.close()
 
-    average_loss = val_loss / num_batches
-    accuracy = correct / total
+    average_loss = round(val_loss / num_batches, 4)
+    accuracy = round(correct / total, 4)
+    precision = round(precision_score(all_labels, all_predictions, average='weighted'), 4)
+    recall = round(recall_score(all_labels, all_predictions, average='weighted'), 4)
+    f1 = round(f1_score(all_labels, all_predictions, average='weighted'), 4)
 
-    return average_loss, accuracy
+    return average_loss, accuracy, precision, recall, f1
 
 # Prova del modello con stampa del grafico delle previsioni del primo segmento del primo batch
 def try_model(model, dataloader, num_signals, segment_length, iperparametri, device):

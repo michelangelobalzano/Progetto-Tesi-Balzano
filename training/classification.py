@@ -54,7 +54,7 @@ def main(config):
                                 eps=1e-8)
 
     # Ciclo di training
-    epoch_info = {'train_losses': [], 'val_losses': [], 'accuracy': []}
+    epoch_info = {'train_losses': [], 'val_losses': [], 'accuracy': [], 'precision': [], 'recall': [], 'f1score': []}
     test_info = {}
     start_time = time.time()
     num_lr_reductions = 0
@@ -68,18 +68,21 @@ def main(config):
                                                 device, 
                                                 epoch)
         # Validation
-        val_loss, val_accuracy = val_classification_model(model, 
+        val_loss, accuracy, precision, recall, f1 = val_classification_model(model, 
                                                         val_dataloader, 
                                                         device, 
                                                         epoch=epoch, 
                                                         task='validation')
 
-        print(f"Epoch {epoch+1}/{config['num_epochs']}, Train Loss: {train_loss}, Val Loss: {val_loss}, Accuracy: {val_accuracy}")
+        print(f"Epoch {epoch+1}/{config['num_epochs']}, Train Loss: {train_loss}, Val Loss: {val_loss}, Accuracy: {accuracy}, Precision: {precision}, Recall: {recall}, F1Score: {f1}")
 
         # Salvataggio delle informazioni dell'epoca
         epoch_info['train_losses'].append(train_loss)
         epoch_info['val_losses'].append(val_loss)
-        epoch_info['accuracy'].append(val_accuracy)
+        epoch_info['accuracy'].append(accuracy)
+        epoch_info['precision'].append(precision)
+        epoch_info['recall'].append(recall)
+        epoch_info['f1score'].append(f1)
 
         # Aggiorna lo scheduler della velocità di apprendimento in base alla loss di validazione
         scheduler.step(val_loss)
@@ -102,13 +105,16 @@ def main(config):
                                         elapsed_time)
 
     # Test
-    test_loss, test_accuracy = val_classification_model(model, 
+    test_loss, test_accuracy, test_precision, test_recall, test_f1 = val_classification_model(model, 
                                                         test_dataloader, 
                                                         device, 
                                                         task='testing')
     test_info['test_loss'] = test_loss
-    test_info['test_accuracy'] = test_accuracy
-    print(f"Test Loss: {test_loss}, Test Accuracy: {test_accuracy}")
+    test_info['accuracy'] = test_accuracy
+    test_info['precision'] = test_precision
+    test_info['recall'] = test_recall
+    test_info['f1score'] = test_f1
+    print(f"Test Loss: {test_loss}, Accuracy: {test_accuracy}, Precision: {test_precision}, Recall: {test_recall}, F1Score: {test_f1}")
 
     end_time = time.time()
     elapsed_time = end_time - start_time
