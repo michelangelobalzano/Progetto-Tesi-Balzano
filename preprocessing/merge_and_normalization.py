@@ -4,7 +4,6 @@ import pandas as pd
 from tqdm import tqdm
 import numpy as np
 
-
 from preprocessing_methods import precision
 
 # Colonne da normalizzare per ogni segnale
@@ -40,7 +39,7 @@ def merge_and_normalize(data_directory, df_names, signals, user_max_segments=Non
     for df_name in df_names:
         n_segmenti_tot = 0 # Provvisorio
         n_segmenti_da_cancellare_tot = 0 # Provvisorio
-        directory = f'{data_directory}\\{df_name}\\'
+        directory = f'{data_directory}{df_name}\\'
 
         data_temp = {}
         for signal in signals:
@@ -51,7 +50,7 @@ def merge_and_normalize(data_directory, df_names, signals, user_max_segments=Non
             data_temp[signal] = data_temp[signal].iloc[1:]
             for col in cols_to_normalize[signal]:
                 data_temp[signal][col] = data_temp[signal][col].astype(float)
-            data_temp[signal]['segment_id'] = data_temp[signal]['segment_id'].astype(int)
+            data_temp[signal]['segment_id'] = data_temp[signal]['segment_id'].astype(np.int64)
         if labeled:
             valence_df_temp = pd.read_csv(f'{directory}VALENCE.csv', header=None, low_memory=False)
             arousal_df_temp = pd.read_csv(f'{directory}AROUSAL.csv', header=None, low_memory=False)

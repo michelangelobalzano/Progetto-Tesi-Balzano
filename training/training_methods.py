@@ -94,7 +94,7 @@ def train_classification_model(model, dataloader, optimizer, device, epoch):
 
     return train_loss / num_batches
 
-def val_classification_model(model, dataloader, device, epoch, task):
+def val_classification_model(model, dataloader, device, epoch=None, task=''):
 
     model.eval()
     val_loss = 0.0
@@ -102,7 +102,12 @@ def val_classification_model(model, dataloader, device, epoch, task):
     total = 0
     num_batches = len(dataloader)
 
-    progress_bar = tqdm(total=num_batches, desc=f"Epoch {epoch + 1} {task}", leave=False)
+    if epoch is not None:
+        desc = f'Epoch {epoch + 1} {task}'
+    else:
+        desc = 'testing'
+
+    progress_bar = tqdm(total=num_batches, desc=desc, leave=False)
     with torch.no_grad():
         for batch in dataloader:
             X, labels = batch

@@ -61,9 +61,6 @@ def main(config):
     current_lr = config['learning_rate']
 
     for epoch in range(config['num_epochs']):
-        
-        print(f'\nEPOCA: {epoch + 1}')
-
         # Training
         train_loss = train_classification_model(model, 
                                                 train_dataloader, 
@@ -74,7 +71,7 @@ def main(config):
         val_loss, val_accuracy = val_classification_model(model, 
                                                         val_dataloader, 
                                                         device, 
-                                                        epoch, 
+                                                        epoch=epoch, 
                                                         task='validation')
 
         print(f"Epoch {epoch+1}/{config['num_epochs']}, Train Loss: {train_loss}, Val Loss: {val_loss}, Accuracy: {val_accuracy}")
@@ -103,10 +100,6 @@ def main(config):
                                         epoch_info, 
                                         epoch+1, 
                                         elapsed_time)
-                save_model(model, 
-                        config['model_path'], 
-                        model_name, 
-                        task='classification')
 
     # Test
     test_loss, test_accuracy = val_classification_model(model, 
@@ -125,10 +118,6 @@ def main(config):
                             epoch+1, 
                             elapsed_time, 
                             test_info)
-    save_model(model, 
-            config['model_path'], 
-            model_name, 
-            task='classification')
         
     losses_graph(epoch_info, save_path=f'graphs\\losses_plot_{model_name}.png')
 

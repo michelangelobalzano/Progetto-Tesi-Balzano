@@ -101,9 +101,9 @@ def load_pretrained_model_params(config):
     return config
 
 # Salvataggio del modello
-def save_model(model, model_path, name, task):
+def save_model(model, model_path, name):
     # Salvataggio pickle modello
-    torch.save(model.state_dict(), model_path + task + '_' + name + '.pth')
+    torch.save(model.state_dict(), model_path + 'pretrained_' + name + '.pth')
 
 # Salvataggio info pretraining
 def save_pretraining_info(model_name, 
