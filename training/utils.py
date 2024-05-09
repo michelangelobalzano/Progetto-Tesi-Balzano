@@ -67,7 +67,7 @@ def generate_random_start_idx(num_numbers, range_start, range_end, distance):
 
 # Caricamento modello preaddestrato per continuare pretraining o per classificare
 def load_pretrained_model(model, config):
-    stato_modello = torch.load(config['model_path'] + 'pretraining_' + config['model_to_load'] + '.pth')
+    stato_modello = torch.load(config['model_path'] + 'pretrained_' + config['model_to_load'] + '.pth')
     # Eliminazione output layer transformer
     output_layer_keys = ['output_layer.weight', 'output_layer.bias']
     stato_modello = {key: value for key, value in stato_modello.items() if key not in output_layer_keys}
@@ -89,7 +89,7 @@ def load_pretrained_model_params(config):
         for row_number, row in enumerate(reader):
             if 1 <= row_number <= 6: # Lettura parametri modello
                 chiave = row[0]
-                if row[0] in ['batch_size', 'd_model', 'num_heads', 'num_layers']:
+                if row[0] in ['batch_size', 'd_model', 'dim_feedforward', 'num_heads', 'num_layers']:
                     valore = int(row[1])
                 elif row[0] == 'dropout':
                     valore = float(row[1])

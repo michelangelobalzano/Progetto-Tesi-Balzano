@@ -26,7 +26,7 @@ class Options(object):
                                  help='Numero epoche di addestramento.')
         self.parser.add_argument('--num_epochs_to_save', type=int, default=10,
                                  help='Numero epoche per salvataggio automatico.')
-        self.parser.add_argument('--learning_rate', type=float, default=0.001,
+        self.parser.add_argument('--learning_rate', type=float, default=0.0001,
                                  help='Learning rate.')
         self.parser.add_argument('--patience', type=int, default=10,
                                  help='Numero epoche pazienza di non miglioramento.')

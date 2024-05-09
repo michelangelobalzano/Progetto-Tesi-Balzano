@@ -141,10 +141,8 @@ def val_classification_model(model, dataloader, device, epoch=None, task=''):
     return average_loss, accuracy, precision, recall, f1
 
 # Prova del modello con stampa del grafico delle previsioni del primo segmento del primo batch
-def try_model(model, dataloader, num_signals, segment_length, iperparametri, device):
+def try_model(model, dataloader, config, device):
     with torch.no_grad():
-        first_batch = next(iter(dataloader))
-        masks = generate_masks(iperparametri['batch_size'], iperparametri['masking_ratio'], iperparametri['lm'], num_signals, segment_length, device)
-        masked_batch = first_batch * masks
-        predictions = model(masked_batch)
-        try_graph(first_batch[0,:,:], masks[0,:,:], predictions[0,:,:], num_signals, segment_length)
+        batch = next(iter(dataloader))
+        predictions, masks = model(batch)
+        try_graph(batch[0,:,:], masks[0,:,:], predictions[0,:,:], config['num_signals'], config['segment_length'])

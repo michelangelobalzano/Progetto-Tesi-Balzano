@@ -26,18 +26,19 @@ def main(config):
     # Caricamento dati e creazione dataloaders
     train_dataloader, val_dataloader, test_dataloader = get_classification_dataloaders(config, device)
 
-    # Definizione transformer
-    model = TSTransformerClassifier(config, device)
-    model = model.to(device)
+    # Caricamento modello preaddestrato
     if config['model_to_load'] != '':
         model_name = config['model_to_load']
-        # Caricamento modello
-        model = load_pretrained_model(model, config)
         # Caricamento parametri modello ed etichetta da classificare
         config = load_pretrained_model_params(config)
+        model = TSTransformerClassifier(config, device)
+        # Caricamento modello
+        model = load_pretrained_model(model, config)
     else:
+        model = TSTransformerClassifier(config, device)
         current_datetime = datetime.now()
         model_name = current_datetime.strftime("%m-%d_%H-%M")
+    model = model.to(device)
 
     # Definizione dell'ottimizzatore (AdamW)
     optimizer = optim.AdamW(model.parameters(), lr=config['learning_rate'])

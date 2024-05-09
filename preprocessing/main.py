@@ -14,11 +14,11 @@ user_max_segments = 1000 # Numero massimo di segmenti per utente (altrimenti Non
 min_seconds = 600 # (10 minuti) tempo minimo di registrazioni valide
 
 # Preprocessing dei dataset non etichettati
-for data in ['3', '4', '5', '6', '7', '8', '9']:
-    preprocessing(data_directory=data_directory+data+'\\', df_name=data, signals=signals, min_seconds=min_seconds, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size, user_max_segments=user_max_segments)
+#for data in ['3', '4', '5', '6', '7', '8', '9']:
+#    preprocessing(data_directory=data_directory+data+'\\', df_name=data, signals=signals, min_seconds=min_seconds, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size, user_max_segments=user_max_segments)
 
 # Preprocessing dei dataset etichettati
 #labeled_data_preprocessing(data_directory=data_directory+labeled_df_name+'\\', df_name=labeled_df_name, signals=labeled_signals, target_freq=target_freq, w_size=w_size, w_step_size=w_step_size)
 
-merge_and_normalize(data_directory, df_names, signals, labeled=False)
+merge_and_normalize(data_directory, ['6'], signals, labeled=False)
 #merge_and_normalize(data_directory, [labeled_df_name], signals, labeled=True)
