@@ -25,7 +25,7 @@ def get_users(data_directory):
 
     return list(users)
 
-def merge_and_normalize(data_directory, df_names, signals, user_max_segments=None, labeled=False):
+def merge_and_normalize(data_directory, df_names, signals, labeled=False):
 
     data = {} # Dizionario dei segnali
     valence_df = pd.DataFrame() # Df delle etichette

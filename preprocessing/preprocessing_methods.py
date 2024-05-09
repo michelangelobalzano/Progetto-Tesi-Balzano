@@ -180,7 +180,7 @@ def sleep_detection(data, signals, median_windows_size=5, angle_degree_threshold
 # Aggiunta della colonna 'segment_id'
 # La singola riga è una singola registrazione appartenente al segmento 'segment_id'
 ####################################################################################################################
-def segmentation(df, segment_prefix, w_size, w_step_size):
+def segmentation(df, segment_prefix, w_size, w_step_size, user_id=None):
 
     segments_df = pd.DataFrame()
 
@@ -189,6 +189,10 @@ def segmentation(df, segment_prefix, w_size, w_step_size):
     start_timestamp = start_time
     segments = []
     segment_number = 0
+
+    # Aggiunta colonna user_id per poter rimuovere segmenti casuali per user_id
+    if user_id is not None:
+        df['user_id'] = user_id
 
     while start_timestamp + timedelta(seconds=w_size) <= end_time:
 

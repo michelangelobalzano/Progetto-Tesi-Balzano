@@ -1,6 +1,7 @@
 import os
 from os.path import join
 import pandas as pd
+import numpy as np
 from tqdm import tqdm
 from preprocessing_methods import necessary_signals, structure_modification, off_body_detection, sleep_detection, segmentation, delete_off_body_and_sleep_segments, export_df
 
@@ -24,7 +25,7 @@ def read_sensor_data(data_directory, users, signals, min_seconds):
         for signal in set(signals) | set(necessary_signals):
             data[user_id][signal] = []
 
-    progress_bar = tqdm(total=len(users), desc="Data reading")
+    progress_bar = tqdm(total=len(users), desc="Data reading", leave=False)
     for user_directory in os.listdir(data_directory):
 
         if os.path.isdir(os.path.join(data_directory, user_directory)):
@@ -60,13 +61,13 @@ def read_sensor_data(data_directory, users, signals, min_seconds):
 ####################################################################################################################
 # Esecuzione del preprocessing
 ####################################################################################################################
-def preprocessing(data_directory, df_name, signals, min_seconds, target_freq, w_size, w_step_size):
+def preprocessing(data_directory, df_name, signals, min_seconds, target_freq, w_size, w_step_size, user_max_segments=None):
     
     users = get_users(data_directory)
     data = read_sensor_data(data_directory, users, signals, min_seconds)
 
     # Preprocessing dei dataframe
-    progress_bar = tqdm(total=len(users), desc="Df modification")
+    progress_bar = tqdm(total=len(users), desc="Df modification", leave=False)
     for user_id in users:
         dim = len(data[user_id][signals[0]])
         for i in range(dim):
@@ -76,7 +77,7 @@ def preprocessing(data_directory, df_name, signals, min_seconds, target_freq, w_
         progress_bar.update(1)
     progress_bar.close()
 
-    progress_bar = tqdm(total=len(users), desc="Off-body and sleep detection")
+    progress_bar = tqdm(total=len(users), desc="Off-body and sleep detection", leave=False)
     for user_id in users:
         dim = len(data[user_id][signals[0]])
         for i in range(dim):
@@ -103,7 +104,7 @@ def preprocessing(data_directory, df_name, signals, min_seconds, target_freq, w_
         segmented_data[signal] = pd.DataFrame()
 
     # Segmentazione dei df
-    progress_bar = tqdm(total=len(users), desc="Segmentation")
+    progress_bar = tqdm(total=len(users), desc="Segmentation", leave=False)
     for user_id in users:
     
         dim = len(data[user_id][signals[0]])
@@ -111,7 +112,7 @@ def preprocessing(data_directory, df_name, signals, min_seconds, target_freq, w_
             # Produzione dei segmenti
             data_temp = {}
             for signal in signals:
-                data_temp[signal] = segmentation(data[user_id][signal][i], segment_prefix=f'{df_name}{user_id}{i}', w_size=w_size, w_step_size=w_step_size)
+                data_temp[signal] = segmentation(data[user_id][signal][i], segment_prefix=f'{df_name}{user_id}{i}', w_size=w_size, w_step_size=w_step_size, user_id=user_id)
 
             # Eliminazione segmenti di off-body e sleep
             data_temp = delete_off_body_and_sleep_segments(data_temp, signals)
@@ -144,8 +145,26 @@ def preprocessing(data_directory, df_name, signals, min_seconds, target_freq, w_
         segmenti2 = set(segmented_data[signal].groupby('segment_id').groups.keys())
         if (segmenti != segmenti2):
             break'''
+    
+    # Eliminazione casuale di segmenti per tenerne un massimo di user_max_segments
+    if user_max_segments is not None:
+        for user_id in users:
+            user_segments = set(segmented_data[signals[0]][segmented_data[signals[0]]['user_id'] == user_id]['segment_id'].unique())
+            if len(user_segments) > user_max_segments:
+                user_segments = list(user_segments)
+                random_segment_ids = np.random.choice(user_segments, size=user_max_segments, replace=False)
+                for signal in signals:
+                    mask = (segmented_data[signal]['user_id'] == user_id) & (~segmented_data[signal]['segment_id'].isin(random_segment_ids))
+                    segmented_data[signal] = segmented_data[signal].drop(segmented_data[signal][mask].index)
+
+    for signal in signals:
+        segmented_data[signal] = segmented_data[signal].drop(['user_id'], axis=1)
 
     # Esportazione delle features del dataset
+    progress_bar = tqdm(total=len(signals), desc="Exportation", leave=False)
     for signal in signals:
-        print(f"Esportazione {signal}...")
         export_df(segmented_data[signal], data_directory, signal)
+        progress_bar.update(1)
+    progress_bar.close()
+
+    print(f'{df_name} processed')

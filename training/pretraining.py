@@ -82,8 +82,7 @@ def main(config):
                                     elapsed_time)
                 save_model(model, 
                         config['model_path'], 
-                        model_name, 
-                        task='pretraining')
+                        model_name)
 
     end_time = time.time()
     elapsed_time = end_time - start_time
@@ -94,8 +93,7 @@ def main(config):
                             elapsed_time)
     save_model(model, 
                 config['model_path'], 
-                model_name, 
-                task='pretraining')
+                model_name)
         
     losses_graph(epoch_info, save_path=f'graphs\\losses_plot_{model_name}.png')
 
