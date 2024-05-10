@@ -40,7 +40,7 @@ def try_graph(original, mask, prediction, num_signals, segment_length):
 
     plt.figure(figsize=(10, 18))
 
-    signal_names = ['BVP', 'EDA', 'HR']
+    signal_names = ['HR', 'EDA', 'BVP']
     for s in range(num_signals):
         plt.subplot(num_signals, 1, s+1)
 

@@ -59,7 +59,7 @@ def main(config):
     test_info = {}
     start_time = time.time()
     num_lr_reductions = 0
-    current_lr = config['learning_rate']
+    current_lr = [config['learning_rate']]
 
     for epoch in range(config['num_epochs']):
         # Training
@@ -88,6 +88,7 @@ def main(config):
         # Aggiorna lo scheduler della velocità di apprendimento in base alla loss di validazione
         scheduler.step(val_loss)
         if scheduler._last_lr != current_lr:
+            print(f'learning rate reduced: {current_lr} -> {scheduler._last_lr}')
             num_lr_reductions += 1
             current_lr = scheduler._last_lr
         if num_lr_reductions > config['max_lr_reductions']:

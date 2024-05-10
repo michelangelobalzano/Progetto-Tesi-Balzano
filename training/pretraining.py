@@ -5,7 +5,7 @@ import torch
 import time
 from datetime import datetime
 from data_preparation import get_pretraining_dataloaders
-from training_methods import train_pretrain_model, validate_pretrain_model
+from training_methods import train_pretrain_model, validate_pretrain_model, try_model
 from graphs_methods import losses_graph
 from utils import save_pretraining_info, save_model
 from options import Options
@@ -47,7 +47,7 @@ def main(config):
     epoch_info = {'train_losses': [], 'val_losses': []}
     start_time = time.time()
     num_lr_reductions = 0
-    current_lr = config['learning_rate']
+    current_lr = [config['learning_rate']]
 
     for epoch in range(config['num_epochs']):
         # Training
@@ -64,6 +64,7 @@ def main(config):
         # Aggiorna lo scheduler della velocità di apprendimento in base alla loss di validazione
         scheduler.step(val_loss)
         if scheduler._last_lr != current_lr:
+            print(f'learning rate reduced: {current_lr} -> {scheduler._last_lr}')
             num_lr_reductions += 1
             current_lr = scheduler._last_lr
         if num_lr_reductions > config['max_lr_reductions']:
@@ -84,6 +85,9 @@ def main(config):
                         config['model_path'], 
                         model_name)
 
+        '''if (epoch + 1) % 2 == 0 and epoch > 0:
+            try_model(model, val_dataloader, config, device)'''
+
     end_time = time.time()
     elapsed_time = end_time - start_time
     save_pretraining_info(model_name, 
@@ -99,7 +103,7 @@ def main(config):
 
 args = Options().parse()
 config = args.__dict__
-config['signals'] = ['BVP', 'EDA', 'HR']
+config['signals'] = ['HR', 'EDA', 'BVP']
 config['num_signals'] = 3
 config['segment_length'] = 240
 main(config)
