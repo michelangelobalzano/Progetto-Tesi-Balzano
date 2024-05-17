@@ -45,24 +45,6 @@ def read_sensor_data(data_directory, users, signals):
 
     return data
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-####################################################################################################################
-# Esecuzione del preprocessing
-####################################################################################################################
-# Lettura del dataset
 def labeled_data_preprocessing(data_directory, df_name, signals, target_freq, w_size, w_step_size):
     
     users = get_users(data_directory)
@@ -105,7 +87,7 @@ def labeled_data_preprocessing(data_directory, df_name, signals, target_freq, w_
         # Produzione dei segmenti
         data_temp = {}
         for signal in set(signals) | set(['BVP_LABELED']):
-            data_temp[signal] = segmentation(data[user_id][signal], segment_prefix=f'{df_name}{user_id}', w_size=w_size, w_step_size=w_step_size)
+            data_temp[signal] = segmentation(data[user_id][signal], segment_prefix=f'{df_name}{user_id}', w_size=w_size, w_step_size=w_step_size, user_id=user_id)
             segmented_data[signal] = pd.concat([segmented_data[signal], data_temp[signal]], axis=0, ignore_index=True)
         progress_bar.update(1)
     progress_bar.close()
@@ -137,11 +119,19 @@ def labeled_data_preprocessing(data_directory, df_name, signals, target_freq, w_
     #valori_df2 = set(eda_df.groupby('segment_id').groups.keys())
     #valori_df3 = set(hr_df.groupby('segment_id').groups.keys())
     #coincidono = valori_df1 == valori_df2 == valori_df3
+
+    # Creazione dataframe con user_id e segment_id
+    user_ids_df = pd.DataFrame(columns=['segment_id', 'user_id'])
+    for segment_id, segment in segmented_data['BVP_LABELED'].groupby('segment_id'):
+        row = {'segment_id': segment_id, 'user_id': segment['user_id'].iloc[0]}
+        row_df = pd.DataFrame([row])
+        user_ids_df = pd.concat([user_ids_df, row_df])
+    user_ids_df.to_csv('processed_data\\labeled_user_ids.csv',index=False)
         
     # Eliminazione colonne inutili
     for signal in signals:
-        segmented_data[signal] = segmented_data[signal].drop(['time'], axis=1)
-    segmented_data['BVP_LABELED'] = segmented_data['BVP_LABELED'].drop(['time', 'valence', 'arousal'], axis=1)
+        segmented_data[signal] = segmented_data[signal].drop(['time','user_id'], axis=1)
+    segmented_data['BVP_LABELED'] = segmented_data['BVP_LABELED'].drop(['time', 'valence', 'arousal','user_id'], axis=1)
 
     # Esportazione delle features del dataset
     for signal in signals:

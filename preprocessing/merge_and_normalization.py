@@ -37,8 +37,6 @@ def merge_and_normalize(data_directory, df_names, signals, labeled=False):
 
     progress_bar = tqdm(total=len(df_names), desc="Data reading")
     for df_name in df_names:
-        n_segmenti_tot = 0 # Provvisorio
-        n_segmenti_da_cancellare_tot = 0 # Provvisorio
         directory = f'{data_directory}{df_name}\\'
 
         data_temp = {}
@@ -59,38 +57,6 @@ def merge_and_normalize(data_directory, df_names, signals, labeled=False):
             arousal_df_temp.columns = ['segment_id', 'arousal']
             valence_df_temp = valence_df_temp.iloc[1:]
             arousal_df_temp = arousal_df_temp.iloc[1:]
-
-        # Se è fissato un numero massimo di segmenti per utente si cancellano se sono di numero maggiore
-        # NON FUNZIONA CON IL SEGMENT_ID DI TIPO INTERO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        '''if not user_max_segments == None:
-            if not labeled:
-                # Determinazione utenti
-                users = get_users(directory)
-                # Riordinamento decrescente degli utenti per cercare i segmenti utente con il segment_id
-                users = list(map(int, users))
-                users.sort(reverse=True)
-                users = [str(x) for x in users]
-
-                # Determinazione segmenti da mantenere
-                segments_to_delete = set()
-                for user_id in users:
-                    user_segments = data_temp[signals[0]].loc[data_temp[signals[0]]['segment_id'].astype(str).str.startswith(str(df_name+user_id)), 'segment_id'].unique()
-                    n_segmenti_tot += len(user_segments) # Provvisorio
-                    print(f'numero segmenti di {user_id}: {len(user_segments)}')
-
-                    if len(user_segments) > user_max_segments:
-                        segments_to_delete.update(np.random.choice(user_segments, size=len(user_segments)-user_max_segments, replace=False))
-                        
-                n_segmenti_da_cancellare_tot += len(segments_to_delete) # Provvisorio
-                
-                if len(segments_to_delete) > 0:
-                    for signal in signals:
-                        data_temp[signal] = data_temp[signal][~data_temp[signal]['segment_id'].isin(segments_to_delete)]
-
-        print('TOTALE SEGMENTI: ', n_segmenti_tot)
-        print('TOTALE SEGMENTI DA CANCELLARE: ', n_segmenti_da_cancellare_tot)
-        print('NUMERO SEGMENTI RISULTANTI: ', data_temp[signals[0]]['segment_id'].nunique())'''
-
 
         # Concatenazione del dataset
         for signal in signals:

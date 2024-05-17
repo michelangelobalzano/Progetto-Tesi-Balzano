@@ -2,6 +2,7 @@ import pandas as pd
 import torch
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, TensorDataset
+import math
 
 # Caricamento dei dati
 def load_unlabeled_data(data_directory, signals):
@@ -23,7 +24,8 @@ def load_labeled_data(data_directory, signals, label):
         labels = pd.read_csv(data_directory + 'VALENCE.csv')
     elif label == 'arousal':
         labels = pd.read_csv(data_directory + 'AROUSAL.csv')
-    return data, labels
+    users = pd.read_csv(data_directory + 'labeled_user_ids.csv')
+    return data, labels, users
 
 # Suddivisione dei segmenti in train e val per la task pretraining
 def pretrain_data_split(data, val_ratio, signals):
@@ -39,10 +41,21 @@ def pretrain_data_split(data, val_ratio, signals):
     return train_data, val_data
 
 # Suddivisione dei segmenti in train val e test per la task classification
-def classification_data_split(data, labels, val_ratio, test_ratio, signals):
-    segment_ids = data[signals[0]]['segment_id'].unique()
-    train_segment_ids, remaining = train_test_split(segment_ids, train_size=(100-val_ratio-test_ratio)/100, random_state=42)
-    val_segment_ids, test_segment_ids = train_test_split(remaining, train_size=val_ratio / (val_ratio + test_ratio), random_state=42)
+def classification_data_split(data, labels, users, val_ratio, test_ratio, signals, split_per_subject):
+
+    if split_per_subject:
+        user_ids = users['user_id'].unique()
+        train_user_ids, remaining = train_test_split(user_ids, train_size=(100-val_ratio-test_ratio+5)/100, random_state=42)
+        val_user_ids, test_user_ids = train_test_split(remaining, train_size=val_ratio / (val_ratio + test_ratio), random_state=42)
+
+        train_segment_ids = users[users['user_id'].isin(train_user_ids)]['segment_id'].tolist()
+        val_segment_ids = users[users['user_id'].isin(val_user_ids)]['segment_id'].tolist()
+        test_segment_ids = users[users['user_id'].isin(test_user_ids)]['segment_id'].tolist()
+
+    else:
+        segment_ids = data[signals[0]]['segment_id'].unique()
+        train_segment_ids, remaining = train_test_split(segment_ids, train_size=(100-val_ratio-test_ratio)/100, random_state=42)
+        val_segment_ids, test_segment_ids = train_test_split(remaining, train_size=val_ratio / (val_ratio + test_ratio), random_state=42)
 
     train_data = {}
     val_data = {}
@@ -129,9 +142,9 @@ def get_pretraining_dataloaders(config, device):
 # Caricamento dati e creazione dataloaders per classificazione
 def get_classification_dataloaders(config, device):
     # Caricamento e preparazione dei dati
-    data, labels = load_labeled_data(config['data_path'], config['signals'], config['label'])
+    data, labels, users = load_labeled_data(config['data_path'], config['signals'], config['label'])
     # Split dei dati
-    train, train_labels, val, val_labels, test, test_labels = classification_data_split(data, labels, config['val_ratio'], config['test_ratio'], config['signals'])
+    train, train_labels, val, val_labels, test, test_labels = classification_data_split(data, labels, users, config['val_ratio'], config['test_ratio'], config['signals'], config['split_per_subject'])
     num_train_segments = len(train[config['signals'][0]].groupby('segment_id'))
     num_val_segments = len(val[config['signals'][0]].groupby('segment_id'))
     num_test_segments = len(test[config['signals'][0]].groupby('segment_id'))

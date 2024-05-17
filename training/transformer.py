@@ -4,129 +4,7 @@ from torch import nn, Tensor
 import torch.nn.functional as F
 from torch.nn.modules import MultiheadAttention, Linear, Dropout, BatchNorm1d
 import math
-
 from utils import generate_masks
-'''
-class PositionalEncoding(nn.Module):
-    def __init__(self, d_model, dropout, max_len=240):
-        super(PositionalEncoding, self).__init__()
-        self.dropout = nn.Dropout(p=dropout)
-        
-        pe = torch.zeros(max_len, d_model)
-        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
-        pe[:, 0::2] = torch.sin(position * div_term)
-        pe[:, 1::2] = torch.cos(position * div_term)
-        pe = pe.unsqueeze(0).transpose(0, 1)
-        self.register_buffer('pe', pe)
-        
-    def forward(self, x):
-        x = x + self.pe[:x.size(0), :]
-        return self.dropout(x)
-
-# Channel embedding
-class ChannelEmbedding(nn.Module):
-    def __init__(self, hidden_dim, kernel_size=4, stride=1, padding=1):
-        super(ChannelEmbedding, self).__init__()
-        self.conv1d = nn.Conv1d(in_channels=1, out_channels=hidden_dim, kernel_size=kernel_size, stride=stride, padding=padding)
-        self.activation = nn.GELU()
-        self.batch_norm = nn.BatchNorm1d(hidden_dim)
-        self.max_pooling = nn.MaxPool1d(kernel_size=4, stride=4)
-
-    def forward(self, x):
-
-        x = self.conv1d(x)
-        x = self.activation(x)
-        x = self.batch_norm(x)
-        x = self.max_pooling(x)
-        
-        x = x.permute(0, 2, 1)
-        
-        return x
-
-# Representation module
-class RepresentationModule(nn.Module):
-    def __init__(self, input_dim, hidden_dim, num_heads):
-        super(RepresentationModule, self).__init__()
-
-        self.num_signals = 3
-    
-        self.linear_projection = nn.Linear(hidden_dim, hidden_dim)
-        self.self_attention = nn.MultiheadAttention(hidden_dim, num_heads)
-        self.add_norm_1 = nn.LayerNorm(hidden_dim)
-        self.feed_forward = nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim * 4),
-            nn.GELU(),
-            nn.Linear(hidden_dim * 4, hidden_dim)
-        )
-        self.add_norm_2 = nn.LayerNorm(hidden_dim)
-
-    def forward(self, x):
-
-        x = self.linear_projection(x)
-        x = x.permute(1, 0, 2)
-        x, _ = self.self_attention(x, x, x)
-        x = x.permute(1, 0, 2)
-        x = self.add_norm_1(x)
-        residual = x
-        x = self.feed_forward(x)
-        x = self.add_norm_2(x + residual)
-
-        return x
-		
-# Transformation head
-class TransformationHead(nn.Module):
-    def __init__(self, input_dim, output_dim):
-        super(TransformationHead, self).__init__()
-        self.mlp = nn.Sequential(
-            nn.Linear(input_dim, input_dim * 4),
-            nn.GELU(),
-            nn.Linear(input_dim * 4, output_dim)
-        )
-
-    def forward(self, x):
-
-        x = torch.mean(x, dim=1)
-        x = self.mlp(x)
-        x = x.squeeze(0)
-        x = x.unsqueeze(1)
-        return x
-
-# Transformer
-class Transformer(nn.Module):
-    #def __init__(self, input_dim, hidden_dim, num_heads, output_dim):
-    def __init__(self, signals, segment_length, d_model, num_heads, dropout, output_dim):
-        super(Transformer, self).__init__()
-        self.channel_embeddings = nn.ModuleDict({signal: ChannelEmbedding(d_model) for signal in signals})
-        self.representation_module = RepresentationModule(segment_length, d_model, num_heads)
-        self.transformation_head = TransformationHead(d_model, segment_length)
-        
-    def forward(self, data, masks):
-        print('transformer data input size: ', data.size())
-        # data = (batch_size, num_signals, segment_length)
-        embeddings = [embed(x) for embed, x in zip(self.channel_embeddings, data)]
-        combined_embeddings = torch.cat(embeddings, dim=-1)
-        representations = self.representation_module(combined_embeddings)
-        output = self.transformation_head(representations)
-        return output
-    
-
-        outputs = {}
-        for signal, segment in data.items():
-
-            segment = segment.permute(0, 2, 1)
-
-            ce_output = self.channel_embeddings[signal](segment)
-            rep_output = self.representation_module(ce_output)
-            pred_output = self.transformation_head(rep_output)
-
-            pred_output = pred_output.permute(0, 2, 1)
-
-            outputs[signal] = pred_output
-
-        return outputs
-    
-'''
 
 class FixedPositionalEncoding(nn.Module):
     
@@ -218,7 +96,7 @@ class TSTransformer(nn.Module):
         elif self.pe_type == 'fixed':
             self.pos_enc = FixedPositionalEncoding(self.segment_length, self.d_model, self.dropout, self.device)
         encoder_layer = MyEncoderLayer(self.d_model, self.dim_feedforward, self.num_heads, self.dropout)
-        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, self.num_layers, mask_check=False, enable_nested_tensor=False)
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, self.num_layers, mask_check=True)
         self.output_layer = nn.Linear(self.d_model, self.num_signals)
         self.act = F.gelu
         self.dropout1 = nn.Dropout(self.dropout)
@@ -228,14 +106,12 @@ class TSTransformer(nn.Module):
         masks = generate_masks(self.config, self.device) # Maschera booleana: 1 = mantenere, 0 = mascherare
         masked_data = data * masks # Applicazione della maschera
 
-        masked_data = data.permute(2, 0, 1)
+        masked_data = masked_data.permute(2, 0, 1)
         masked_data = self.project_inp(masked_data) * math.sqrt(self.d_model)
-        data = data.permute(2, 0, 1)
-        data = self.project_inp(data) * math.sqrt(self.d_model)
 
-        masked_data = self.pos_enc(data)
+        masked_data = self.pos_enc(masked_data)
 
-        output = self.transformer_encoder(masked_data) # [segment_length, batch_size, d_model]
+        output = self.transformer_encoder(masked_data, src_key_padding_mask=~masks.any(dim=1)) # [segment_length, batch_size, d_model]
         output = self.act(output) # Funzione di attivazione
         output = output.permute(1, 0, 2)  # [batch_size, segment_length, d_model]
         output = self.dropout1(output) # Dropout

@@ -19,6 +19,8 @@ class Options(object):
                                  help='Percorso directory salvataggio info sessioni.')
         self.parser.add_argument('--test_ratio', type=int, default=15,
                                  help='Percorso directory salvataggio modelli preaddestrati.')
+        self.parser.add_argument('--split_per_subject', action='store_true',
+                                 help='Se impostato, splitta i dati per soggetto.')
         # Opzioni di addestramento
         self.parser.add_argument('--task', required=True, choices={'pretraining', 'classification'}, type=str,
                                  help='Task di training da eseguire.')
