@@ -4,92 +4,97 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
 import xgboost as xgb
 from tqdm import tqdm
+from imblearn.over_sampling import SMOTE
 
 from training_methods import LOSO, LNSO, KF
-from feature_extraction import process_data, do_pca
+from feature_extraction import process_data, remove_neutrals
 
-label = 'arousal'
+label = 'valence'
 labels = ['valence', 'arousal']
-pca_components = [0,2,3,4,5,6,8,10,12,14,16,18,20]
+remove_neutral_data = True
 
 #process_data()
 
 results_list = []
 
-for num_components in tqdm(pca_components, desc='Processing per PCA components', leave=False):
+features_df = pd.read_csv('classic_ml\\features.csv', header='infer')
+if remove_neutral_data:
+    features_df = remove_neutrals(features_df.copy(), label)
 
-    features_df = pd.read_csv('classic_ml\\features.csv', header='infer')
+X = features_df.drop(['segment_id', 'valence', 'arousal', 'user_id'], axis=1)
+y = features_df[label]
+groups = features_df['user_id']
 
-    if num_components != 0:
-        features_df = do_pca(num_components)
+#SMOTE
+'''X_temp = features_df.drop(['valence', 'arousal'], axis=1)
+y_temp = features_df[label]
 
-    X = features_df.drop(['segment_id', 'valence', 'arousal', 'user_id'], axis=1)
-    y = features_df[label]
-    groups = features_df['user_id']
+minority_class = y_temp.value_counts().idxmin()
 
-    models = {
-        'xgb': xgb.XGBClassifier(max_depth=3, n_estimators=100, learning_rate=0.01),
-        'knn': KNeighborsClassifier(metric='manhattan', n_neighbors=3, weights='uniform'),
-        'rf': RandomForestClassifier(max_depth=20, min_samples_leaf=1, min_samples_split=5, n_estimators=50, random_state=42),
-        'dt': DecisionTreeClassifier(criterion='gini', max_depth=None, min_samples_leaf=5, min_samples_split=2, splitter='random', random_state=42)
-    }
+smote = SMOTE(random_state=42)
+X, y = smote.fit_resample(X_temp, y_temp)
 
-    for model_name, model in tqdm(models.items(), desc='Processing per model', leave=False):
+groups = X['user_id']
+X = X.drop(['segment_id', 'user_id'], axis=1)'''
 
-        acc, prec, rec, f1 = LOSO(model, X, y, groups)
-        results_list.append({
-            'model': model_name,
-            'num_components': num_components,
-            'val_type': 'LOSO',
-            'accuracy': acc,
-            'precision': prec,
-            'recall': rec,
-            'f1': f1
-        })
+models = {
+    'xgb': xgb.XGBClassifier(max_depth=3, n_estimators=100, learning_rate=0.01),
+    'knn': KNeighborsClassifier(metric='manhattan', n_neighbors=3, weights='uniform'),
+    'rf': RandomForestClassifier(max_depth=20, min_samples_leaf=1, min_samples_split=5, n_estimators=50, random_state=42),
+    'dt': DecisionTreeClassifier(criterion='gini', max_depth=None, min_samples_leaf=5, min_samples_split=2, splitter='random', random_state=42)
+}
 
-        acc, prec, rec, f1 = LNSO(model, X, y, groups, 2)
-        results_list.append({
-            'model': model_name,
-            'num_components': num_components,
-            'val_type': 'L2SO',
-            'accuracy': acc,
-            'precision': prec,
-            'recall': rec,
-            'f1': f1
-        })
+for model_name, model in tqdm(models.items(), desc='Processing per model', leave=False):
 
-        acc, prec, rec, f1 = LNSO(model, X, y, groups, 3)
-        results_list.append({
-            'model': model_name,
-            'num_components': num_components,
-            'val_type': 'L3SO',
-            'accuracy': acc,
-            'precision': prec,
-            'recall': rec,
-            'f1': f1
-        })
+    acc, prec, rec, f1 = LOSO(model, X, y, groups)
+    results_list.append({
+        'model': model_name,
+        'val_type': 'LOSO',
+        'accuracy': acc,
+        'precision': prec,
+        'recall': rec,
+        'f1': f1
+    })
 
-        acc, prec, rec, f1 = KF(model, X, y, 5)
-        results_list.append({
-            'model': model_name,
-            'num_components': num_components,
-            'val_type': 'KF(5)',
-            'accuracy': acc,
-            'precision': prec,
-            'recall': rec,
-            'f1': f1
-        })
+    acc, prec, rec, f1 = LNSO(model, X, y, groups, 2)
+    results_list.append({
+        'model': model_name,
+        'val_type': 'L2SO',
+        'accuracy': acc,
+        'precision': prec,
+        'recall': rec,
+        'f1': f1
+    })
 
-        acc, prec, rec, f1 = KF(model, X, y, 10)
-        results_list.append({
-            'model': model_name,
-            'num_components': num_components,
-            'val_type': 'KF(10)',
-            'accuracy': acc,
-            'precision': prec,
-            'recall': rec,
-            'f1': f1
-        })
+    acc, prec, rec, f1 = LNSO(model, X, y, groups, 3)
+    results_list.append({
+        'model': model_name,
+        'val_type': 'L3SO',
+        'accuracy': acc,
+        'precision': prec,
+        'recall': rec,
+        'f1': f1
+    })
+
+    acc, prec, rec, f1 = KF(model, X, y, 5)
+    results_list.append({
+        'model': model_name,
+        'val_type': 'KF(5)',
+        'accuracy': acc,
+        'precision': prec,
+        'recall': rec,
+        'f1': f1
+    })
+
+    acc, prec, rec, f1 = KF(model, X, y, 10)
+    results_list.append({
+        'model': model_name,
+        'val_type': 'KF(10)',
+        'accuracy': acc,
+        'precision': prec,
+        'recall': rec,
+        'f1': f1
+    })
 
 results_df = pd.DataFrame(results_list)
-results_df.to_csv('classic_ml\\model_results.csv', index=False)
+results_df.to_csv('classic_ml\\results\\model_results.csv', index=False)

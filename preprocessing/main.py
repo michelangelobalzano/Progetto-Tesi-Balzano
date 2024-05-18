@@ -12,7 +12,7 @@ w_step_size = 10 # Step size per segmentazione
 target_freq = 4 # Frequenza di ricampionamento dei segnali
 user_max_segments = 1000 # Numero massimo di segmenti per utente (altrimenti None)
 min_seconds = 600 # (10 minuti) tempo minimo di registrazioni valide
-label_w_step_size = 20 # Step size per i dati etichettati
+label_w_step_size = 10 # Step size per i dati etichettati
 
 # Preprocessing dei dataset non etichettati
 #for data in ['3', '4', '5', '6', '7', '8', '9']:

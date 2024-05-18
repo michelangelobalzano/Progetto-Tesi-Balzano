@@ -2,7 +2,7 @@ import pandas as pd
 import torch
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, TensorDataset
-import math
+from imblearn.over_sampling import SMOTE
 
 # Caricamento dei dati
 def load_unlabeled_data(data_directory, signals):
@@ -143,6 +143,9 @@ def get_pretraining_dataloaders(config, device):
 def get_classification_dataloaders(config, device):
     # Caricamento e preparazione dei dati
     data, labels, users = load_labeled_data(config['data_path'], config['signals'], config['label'])
+    # Rimozione opzionale dei segmenti etichettati come neutral
+    if config['remove_neutral_data']:
+        data, labels, users = remove_neutrals(data, labels, users, config['label'], config['signals'])    
     # Split dei dati
     train, train_labels, val, val_labels, test, test_labels = classification_data_split(data, labels, users, config['val_ratio'], config['test_ratio'], config['signals'], config['split_per_subject'])
     num_train_segments = len(train[config['signals'][0]].groupby('segment_id'))
@@ -167,3 +170,15 @@ def get_classification_dataloaders(config, device):
     test_dataloader = DataLoader(test_dataset, batch_size=config['batch_size'], shuffle=True, drop_last=True, collate_fn=classification_collate_fn)
 
     return train_dataloader, val_dataloader, test_dataloader
+
+def remove_neutrals(data, labels, users, label, signals):
+    labels_filtered = labels[labels[label] != 1]
+    valid_segment_ids = labels_filtered['segment_id']
+
+    data_filtered = {}
+    for signal in signals:
+        data_filtered[signal] = data[signal][data[signal]['segment_id'].isin(valid_segment_ids)]
+    users_filtered = users[users['segment_id'].isin(valid_segment_ids)]
+    labels_filtered[label] = labels_filtered[label].replace(2, 1)
+    
+    return data_filtered, labels_filtered, users_filtered

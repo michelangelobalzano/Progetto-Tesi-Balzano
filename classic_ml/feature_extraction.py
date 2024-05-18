@@ -7,6 +7,12 @@ import matplotlib.pyplot as plt
 
 label_map = {'negative': 0, 'neutral': 1, 'positive': 2}
 
+def remove_neutrals(df, label):
+    
+    df = df[df[label] != 1]
+    df[label] = df[label].replace(2, 1)
+    return df
+
 def extract_features(segment, segment_id):
     features = {}
     

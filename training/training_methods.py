@@ -134,7 +134,7 @@ def val_classification_model(model, dataloader, device, epoch=None, task=''):
 
     average_loss = round(val_loss / num_batches, 4)
     accuracy = round(correct / total, 4)
-    precision = round(precision_score(all_labels, all_predictions, average='weighted'), 4)
+    precision = round(precision_score(all_labels, all_predictions, average='weighted', zero_division=0), 4)
     recall = round(recall_score(all_labels, all_predictions, average='weighted'), 4)
     f1 = round(f1_score(all_labels, all_predictions, average='weighted'), 4)
 
