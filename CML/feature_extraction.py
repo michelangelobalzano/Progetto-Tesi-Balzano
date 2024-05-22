@@ -7,13 +7,15 @@ import matplotlib.pyplot as plt
 
 label_map = {'negative': 0, 'neutral': 1, 'positive': 2}
 
+# Rimozione delle etichette neutral
 def remove_neutrals(df, label):
     
     df = df[df[label] != 1]
     df[label] = df[label].replace(2, 1)
     return df
 
-def extract_features(segment, segment_id):
+# Estrazione delle features di un segmento
+def extract_segment_features(segment, segment_id):
     features = {}
     
     features['segment_id'] = segment_id
@@ -40,24 +42,8 @@ def extract_features(segment, segment_id):
         
     return pd.DataFrame(features, index=[0])
 
-def do_pca(num_components):
-
-    features_df = pd.read_csv('classic_ml\\features.csv', header='infer')
-
-    features = features_df.drop(['segment_id', 'valence', 'arousal'], axis=1)
-    labels = features_df[['valence', 'arousal']]
-    segment_ids = features_df[['segment_id']]
-    users = features_df[['user_id']]
-
-    pca = PCA(n_components=num_components)
-    principal_components = pca.fit_transform(features)
-    features = pd.DataFrame(data=principal_components, columns=[f'PC{i+1}' for i in range(principal_components.shape[1])])
-
-    result_df = pd.concat([segment_ids, features, labels, users], axis=1)
-
-    return result_df
-
-def process_data():
+# Estrazione delle features
+def feature_extraction():
     
     users = pd.read_csv('processed_data\\labeled_user_ids.csv', header='infer')
 
@@ -79,24 +65,23 @@ def process_data():
     merged_df['eda'] = eda_df['eda'].astype(float)
     merged_df['hr'] = hr_df['hr'].astype(float)
 
+    # Creazione dataframe delle features
     features_df = pd.DataFrame()
-
     for segment_id, segment_data in tqdm(merged_df.groupby('segment_id'), desc='feature extraction', leave=False):
-        segment_features = extract_features(segment_data, segment_id)
+        segment_features = extract_segment_features(segment_data, segment_id)
         features_df = pd.concat([features_df, segment_features], axis=0, ignore_index=True)
-
     features_df = pd.merge(features_df, valence_df, on='segment_id')
     features_df = pd.merge(features_df, arousal_df, on='segment_id')
 
+    # Normalizzazione delle features
     features = features_df.drop(['segment_id', 'valence', 'arousal'], axis=1)
     labels = features_df[['valence', 'arousal']]
     segment_ids = features_df[['segment_id']]
-
     scaler = StandardScaler()
     scaled_features = scaler.fit_transform(features)
     scaled_features_df = pd.DataFrame(scaled_features, columns=features.columns)
 
+    # Esportazione delle features estratte
     result_df = pd.concat([segment_ids, scaled_features_df, labels], axis=1)
     result_df = pd.merge(result_df, users, on='segment_id')
-
     result_df.to_csv('CML\\features.csv', index=False)

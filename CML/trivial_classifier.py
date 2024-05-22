@@ -3,18 +3,22 @@ import pandas as pd
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from feature_extraction import remove_neutrals
 
-label = 'arousal'
-labels = ['valence', 'arousal']
-remove_neutral_data = True
+label = 'arousal' # Etichetta da predire
 
-features_df = pd.read_csv('classic_ml\\features.csv', header='infer')
-if remove_neutral_data:
-    features_df = remove_neutrals(features_df.copy(), label)
+# Estrazione delle features (Commentare se già effettuata)
+#feature_extraction()
 
+# Lettura dataframe delle features
+features_df = pd.read_csv('CML\\features.csv', header='infer')
+
+# Rimozione etichette neutral dell'etichetta da predire
+features_df = remove_neutrals(features_df.copy(), label)
+
+# Classificazione
 y = features_df[label]
-
+# Determinazione etichetta di maggioranza
 majority_label = np.bincount(y).argmax()
-
+# Predizioni
 y_pred_majority = np.full_like(y, majority_label)
 
 accuracy = accuracy_score(y, y_pred_majority)
