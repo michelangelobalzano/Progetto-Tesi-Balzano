@@ -19,8 +19,8 @@ class Options(object):
                                  help='Percorso directory salvataggio info sessioni.')
         self.parser.add_argument('--test_ratio', type=int, default=15,
                                  help='Percorso directory salvataggio modelli preaddestrati.')
-        self.parser.add_argument('--split_per_subject', action='store_true',
-                                 help='Se impostato, splitta i dati per soggetto.')
+        self.parser.add_argument('--split_type', choices={'LOSO', 'L2SO', 'L3SO'},
+                                 help='Tipo di split dei dati in train/val/test.')
         self.parser.add_argument('--remove_neutral_data', action='store_true',
                                  help='Se impostato, rimuove i segmenti etichettati come neutral.')
         # Opzioni di addestramento
