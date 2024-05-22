@@ -4,7 +4,6 @@ from torch import nn, Tensor
 import torch.nn.functional as F
 from torch.nn.modules import MultiheadAttention, Linear, Dropout, BatchNorm1d
 import math
-from utils import generate_masks
 
 class FixedPositionalEncoding(nn.Module):
     
@@ -74,51 +73,6 @@ class MyEncoderLayer(nn.modules.Module):
         data = data.permute(2, 0, 1)  # [segment_length, batch_size, d_model]
 
         return data
-
-class TSTransformer(nn.Module):
-    def __init__(self, config, device):
-        super(TSTransformer, self).__init__()
-
-        self.config = config
-        self.num_signals = config['num_signals']
-        self.segment_length = config['segment_length']
-        self.d_model = config['d_model']
-        self.dim_feedforward = config['dim_feedforward']
-        self.dropout = config['dropout']
-        self.num_layers = config['num_layers']
-        self.num_heads = config['num_heads']
-        self.pe_type = config['pe_type']
-        self.device = device
-
-        self.project_inp = nn.Linear(self.num_signals, self.d_model)
-        if self.pe_type == 'learnable':
-            self.pos_enc = LearnablePositionalEncoding(self.segment_length, self.d_model, self.dropout)
-        elif self.pe_type == 'fixed':
-            self.pos_enc = FixedPositionalEncoding(self.segment_length, self.d_model, self.dropout, self.device)
-        encoder_layer = MyEncoderLayer(self.d_model, self.dim_feedforward, self.num_heads, self.dropout)
-        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, self.num_layers, mask_check=True)
-        self.output_layer = nn.Linear(self.d_model, self.num_signals)
-        self.act = F.gelu
-        self.dropout1 = nn.Dropout(self.dropout)
-        
-    def forward(self, data):
-
-        masks = generate_masks(self.config, self.device) # Maschera booleana: 1 = mantenere, 0 = mascherare
-        masked_data = data * masks # Applicazione della maschera
-
-        masked_data = masked_data.permute(2, 0, 1)
-        masked_data = self.project_inp(masked_data) * math.sqrt(self.d_model)
-
-        masked_data = self.pos_enc(masked_data)
-
-        output = self.transformer_encoder(masked_data, src_key_padding_mask=~masks.any(dim=1)) # [segment_length, batch_size, d_model]
-        output = self.act(output) # Funzione di attivazione
-        output = output.permute(1, 0, 2)  # [batch_size, segment_length, d_model]
-        output = self.dropout1(output) # Dropout
-        output = self.output_layer(output) # [batch_size, segment_length, num_signals]
-        output = output.permute(0, 2, 1) # [batch_size, num_signals, segment_length]
-
-        return output, masks # [batch_size, num_signals, segment_length]
 
 class TSTransformerClassifier(nn.Module):
     def __init__(self, config, device):

@@ -1,7 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from preprocessing import get_users
+from preprocessing_methods import get_users
 
 user_protocol = {
     '1': 2,

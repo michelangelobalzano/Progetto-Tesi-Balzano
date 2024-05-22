@@ -5,16 +5,6 @@ import numpy as np
 from tqdm import tqdm
 from preprocessing_methods import necessary_signals, structure_modification, off_body_detection, sleep_detection, segmentation, delete_off_body_and_sleep_segments, export_df
 
-def get_users(data_directory):
-
-    users = set()
-    for user_directory in os.listdir(data_directory):
-        if os.path.isdir(os.path.join(data_directory, user_directory)):
-            user_id = user_directory
-            users.add(user_id)
-
-    return list(users)
-
 def read_sensor_data(data_directory, users, signals, min_seconds):
 
     data = {}

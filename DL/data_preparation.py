@@ -2,99 +2,42 @@ import pandas as pd
 import torch
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, TensorDataset
-from imblearn.over_sampling import SMOTE
 
-'''# Caricamento dei dati
-def load_unlabeled_data(data_directory, signals):
+# Rimozione delle etichette neutral in base all'etichetta da classificare
+def remove_neutrals(data, labels, users, config):
+    labels_filtered = labels[labels[config['label']] != 'neutral']
+    valid_segment_ids = labels_filtered['segment_id']
 
-    data = {}
-    for signal in signals:
-        file_path = data_directory + signal + '.csv'
-        data[signal] = pd.read_csv(file_path, low_memory=False)
-    return data'''
-
-'''# Suddivisione dei segmenti in train e val per la task pretraining
-def pretrain_data_split(data, val_ratio, signals):
-    segment_ids = data[signals[0]]['segment_id'].unique()
-    train_segment_ids, val_segment_ids = train_test_split(segment_ids, train_size=(100-val_ratio)/100, random_state=42)
-
-    train_data = {}
-    val_data = {}
-    for signal in signals:
-        train_data[signal] = data[signal][data[signal]['segment_id'].isin(train_segment_ids)].reset_index(drop=True)
-        val_data[signal] = data[signal][data[signal]['segment_id'].isin(val_segment_ids)].reset_index(drop=True)
-
-    return train_data, val_data'''
-
-'''# Conversione dei dati in un tensore di dimensioni (num_signals, num_segments, segment_length)
-def pretraining_data_to_tensor(data, num_signals, num_segments, segment_length):
+    data_filtered = {}
+    for signal in config['signals']:
+        data_filtered[signal] = data[signal][data[signal]['segment_id'].isin(valid_segment_ids)]
+    users_filtered = users[users['segment_id'].isin(valid_segment_ids)]
     
-    prepared_data = torch.zeros(num_signals, num_segments, segment_length)
-    
-    for i, (key, df) in enumerate(data.items()):
-
-        for k, (segment_id, segment_data) in enumerate(df.groupby('segment_id')):
-            segment_tensor = torch.tensor(segment_data.iloc[:, :-1].values, dtype=torch.float32)
-            prepared_data[i, k] = segment_tensor.squeeze()
-    
-    return prepared_data'''
-
-'''# Collate Function per i batch del pretraining
-def pretrain_collate_fn(batch):
-
-    return torch.stack([item[0] for item in batch])'''
-
-'''# Caricamento dati e creazione dataloaders per pretraining
-def get_pretraining_dataloaders(config, device):
-    # Caricamento e preparazione dei dati
-    data = load_unlabeled_data(config['data_path'], config['signals'])
-    # Split dei dati
-    train, val = pretrain_data_split(data, config['val_ratio'], config['signals'])
-    num_train_segments = len(train[next(iter(train))].groupby('segment_id'))
-    num_val_segments = len(val[next(iter(val))].groupby('segment_id'))
-    # Conversione dati in tensori
-    train_data = pretraining_data_to_tensor(train, config['num_signals'], num_train_segments, config['segment_length'])
-    val_data = pretraining_data_to_tensor(val, config['num_signals'], num_val_segments, config['segment_length'])
-    # Creazione del DataLoader
-    train_data = train_data.permute(1, 0, 2).to(device)
-    val_data = val_data.permute(1, 0, 2).to(device)
-    train_dataset = TensorDataset(train_data)
-    val_dataset = TensorDataset(val_data)
-    train_dataloader = DataLoader(train_dataset, batch_size=config['batch_size'], shuffle=True, drop_last=True, collate_fn=pretrain_collate_fn)
-    val_dataloader = DataLoader(val_dataset, batch_size=config['batch_size'], shuffle=True, drop_last=True, collate_fn=pretrain_collate_fn)    
-
-    return train_dataloader, val_dataloader'''
+    return data_filtered, labels_filtered, users_filtered
 
 # Caricamento dei dati
-def load_labeled_data(data_directory, signals, label):
+def load_data(config):
 
     data = {}
-    for signal in signals:
-        file_path = data_directory + signal + '_LABELED.csv'
+    for signal in config['signals']:
+        file_path = config['data_path'] + signal + '.csv'
         data[signal] = pd.read_csv(file_path, low_memory=False)
-    if label == 'valence':
-        labels = pd.read_csv(data_directory + 'VALENCE.csv')
-    elif label == 'arousal':
-        labels = pd.read_csv(data_directory + 'AROUSAL.csv')
-    users = pd.read_csv(data_directory + 'labeled_user_ids.csv')
+    if config['label'] == 'valence':
+        labels = pd.read_csv(config['data_path'] + 'VALENCE.csv')
+    elif config['label'] == 'arousal':
+        labels = pd.read_csv(config['data_path'] + 'AROUSAL.csv')
+    users = pd.read_csv(config['data_path'] + 'labeled_user_ids.csv')
+
+    data, labels, users = remove_neutrals(data, labels, users, config)
+
     return data, labels, users
 
 # Suddivisione dei segmenti in train val e test per la task classification
-def classification_data_split(data, labels, users, val_ratio, test_ratio, signals, split_per_subject):
+def segment_data_split(data, labels, val_ratio, test_ratio, signals):
 
-    if split_per_subject:
-        user_ids = users['user_id'].unique()
-        train_user_ids, remaining = train_test_split(user_ids, train_size=(100-val_ratio-test_ratio+5)/100, random_state=42)
-        val_user_ids, test_user_ids = train_test_split(remaining, train_size=val_ratio / (val_ratio + test_ratio), random_state=42)
-
-        train_segment_ids = users[users['user_id'].isin(train_user_ids)]['segment_id'].tolist()
-        val_segment_ids = users[users['user_id'].isin(val_user_ids)]['segment_id'].tolist()
-        test_segment_ids = users[users['user_id'].isin(test_user_ids)]['segment_id'].tolist()
-
-    else:
-        segment_ids = data[signals[0]]['segment_id'].unique()
-        train_segment_ids, remaining = train_test_split(segment_ids, train_size=(100-val_ratio-test_ratio)/100, random_state=42)
-        val_segment_ids, test_segment_ids = train_test_split(remaining, train_size=val_ratio / (val_ratio + test_ratio), random_state=42)
+    segment_ids = data[signals[0]]['segment_id'].unique()
+    train_segment_ids, remaining = train_test_split(segment_ids, train_size=(100-val_ratio-test_ratio)/100, random_state=42)
+    val_segment_ids, test_segment_ids = train_test_split(remaining, train_size=val_ratio / (val_ratio + test_ratio), random_state=42)
 
     train_data = {}
     val_data = {}
@@ -109,12 +52,12 @@ def classification_data_split(data, labels, users, val_ratio, test_ratio, signal
 
     return train_data, train_labels, val_data, val_labels, test_data, test_labels
 
-def custom_data_split(data, labels, users, val_subjects, test_subjects, signals):
+def subject_data_split(data, labels, users, val_subjects, test_subjects, signals):
 
     val_segment_ids = users[users['user_id'].isin(val_subjects)]['segment_id'].tolist()
     test_segment_ids = users[users['user_id'].isin(test_subjects)]['segment_id'].tolist()
     all_segment_ids = users['segment_id'].tolist()
-    train_segment_ids = list(set(all_segment_ids) - set(val_segment_ids) - set(test_segment_ids)) 
+    train_segment_ids = list(set(all_segment_ids) - set(val_segment_ids) - set(test_segment_ids))
 
     train_data = {}
     val_data = {}
@@ -130,7 +73,7 @@ def custom_data_split(data, labels, users, val_subjects, test_subjects, signals)
     return train_data, train_labels, val_data, val_labels, test_data, test_labels
 
 # Conversione dei dati in un tensore di dimensioni (num_signals, num_segments, segment_length)
-def classification_data_to_tensor(data, labels, num_signals, num_segments, segment_length, label):
+def data_to_tensor(data, labels, num_signals, num_segments, segment_length, label):
     
     # Conversione dati in tensore
     prepared_data = torch.zeros(num_signals, num_segments, segment_length)
@@ -146,44 +89,50 @@ def classification_data_to_tensor(data, labels, num_signals, num_segments, segme
         if row[label] == 'negative':
             prepared_labels.append(0)
         elif row[label] == 'positive':
-            prepared_labels.append(2)
-        elif row[label] == 'neutral':
             prepared_labels.append(1)
     prepared_labels = torch.tensor(prepared_labels)
     
     return prepared_data, prepared_labels
 
 # Collate Function per i batch della classificazione
-def classification_collate_fn(batch):
+def my_collate_fn(batch):
 
     return torch.stack([item[0] for item in batch]), torch.tensor([item[1] for item in batch])
 
-def prepare_data(config):
-    # Caricamento e preparazione dei dati
-    data, labels, users = load_labeled_data(config['data_path'], config['signals'], config['label'])
-    # Rimozione opzionale dei segmenti etichettati come neutral
-    if config['remove_neutral_data']:
-        data, labels, users = remove_neutrals(data, labels, users, config['label'], config['signals'])
+# Caricamento dati e creazione dataloaders per classificazione
+def get_subject_dataloaders(data, labels, users, config, device, val_subjects, test_subjects):
+    # Split dei dati
+    train, train_labels, val, val_labels, test, test_labels = subject_data_split(data, labels, users, val_subjects, test_subjects, config['signals'])
+    
+    train_dataloader, val_dataloader, test_dataloader = get_dataloaders(train, train_labels, val, val_labels, test, test_labels, config, device)
 
-    return data, labels, users
+    print(len(train_dataloader))
+    print(len(val_dataloader))
+    print(len(test_dataloader))
+
+    return train_dataloader, val_dataloader, test_dataloader
 
 # Caricamento dati e creazione dataloaders per classificazione
-def get_classification_dataloaders(data, labels, users, config, device, val_subjects, test_subjects):
-    '''# Caricamento e preparazione dei dati
-    data, labels, users = load_labeled_data(config['data_path'], config['signals'], config['label'])
-    # Rimozione opzionale dei segmenti etichettati come neutral
-    if config['remove_neutral_data']:
-        data, labels, users = remove_neutrals(data, labels, users, config['label'], config['signals'])'''
+def get_segment_dataloaders(data, labels, config, device):
     # Split dei dati
-    #train, train_labels, val, val_labels, test, test_labels = classification_data_split(data, labels, users, config['val_ratio'], config['test_ratio'], config['signals'], config['split_per_subject'])
-    train, train_labels, val, val_labels, test, test_labels = custom_data_split(data, labels, users, val_subjects, test_subjects, config['signals'])
+    train, train_labels, val, val_labels, test, test_labels = segment_data_split(data, labels, config['val_ratio'], config['test_ratio'], config['signals'])
+    
+    train_dataloader, val_dataloader, test_dataloader = get_dataloaders(train, train_labels, val, val_labels, test, test_labels, config, device)
+
+    print(len(train_dataloader))
+    print(len(val_dataloader))
+    print(len(test_dataloader))
+
+    return train_dataloader, val_dataloader, test_dataloader
+
+def get_dataloaders(train, train_labels, val, val_labels, test, test_labels, config, device):
     num_train_segments = len(train[config['signals'][0]].groupby('segment_id'))
     num_val_segments = len(val[config['signals'][0]].groupby('segment_id'))
     num_test_segments = len(test[config['signals'][0]].groupby('segment_id'))
     # Preparazione dati
-    train_data, train_labels = classification_data_to_tensor(train, train_labels, config['num_signals'], num_train_segments, config['segment_length'], config['label'])
-    val_data, val_labels = classification_data_to_tensor(val, val_labels, config['num_signals'], num_val_segments, config['segment_length'], config['label'])
-    test_data, test_labels = classification_data_to_tensor(test, test_labels, config['num_signals'], num_test_segments, config['segment_length'], config['label'])
+    train_data, train_labels = data_to_tensor(train, train_labels, config['num_signals'], num_train_segments, config['segment_length'], config['label'])
+    val_data, val_labels = data_to_tensor(val, val_labels, config['num_signals'], num_val_segments, config['segment_length'], config['label'])
+    test_data, test_labels = data_to_tensor(test, test_labels, config['num_signals'], num_test_segments, config['segment_length'], config['label'])
     # Creazione del DataLoader
     train_data = train_data.permute(1, 0, 2).to(device)
     val_data = val_data.permute(1, 0, 2).to(device)
@@ -194,20 +143,8 @@ def get_classification_dataloaders(data, labels, users, config, device, val_subj
     train_dataset = TensorDataset(train_data, train_labels)
     val_dataset = TensorDataset(val_data, val_labels)
     test_dataset = TensorDataset(test_data, test_labels)
-    train_dataloader = DataLoader(train_dataset, batch_size=config['batch_size'], shuffle=True, drop_last=True, collate_fn=classification_collate_fn)
-    val_dataloader = DataLoader(val_dataset, batch_size=config['batch_size'], shuffle=True, drop_last=True, collate_fn=classification_collate_fn)
-    test_dataloader = DataLoader(test_dataset, batch_size=config['batch_size'], shuffle=True, drop_last=True, collate_fn=classification_collate_fn)
+    train_dataloader = DataLoader(train_dataset, batch_size=config['batch_size'], shuffle=True, drop_last=True, collate_fn=my_collate_fn)
+    val_dataloader = DataLoader(val_dataset, batch_size=config['batch_size'], shuffle=True, drop_last=True, collate_fn=my_collate_fn)
+    test_dataloader = DataLoader(test_dataset, batch_size=config['batch_size'], shuffle=True, drop_last=True, collate_fn=my_collate_fn)
 
     return train_dataloader, val_dataloader, test_dataloader
-
-def remove_neutrals(data, labels, users, label, signals):
-    labels_filtered = labels[labels[label] != 1]
-    valid_segment_ids = labels_filtered['segment_id']
-
-    data_filtered = {}
-    for signal in signals:
-        data_filtered[signal] = data[signal][data[signal]['segment_id'].isin(valid_segment_ids)]
-    users_filtered = users[users['segment_id'].isin(valid_segment_ids)]
-    labels_filtered[label] = labels_filtered[label].replace(2, 1)
-    
-    return data_filtered, labels_filtered, users_filtered

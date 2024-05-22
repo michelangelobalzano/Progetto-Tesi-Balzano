@@ -10,22 +10,16 @@ class Options(object):
         # Percorsi
         self.parser.add_argument('--data_path', type=str, default='processed_data\\',
                                  help='Percorso directory dei dati preprocessati.')
-        self.parser.add_argument('--info_path', type=str, default='sessions\\',
+        self.parser.add_argument('--info_path', type=str, default='DL\\sessions\\',
                                  help='Percorso directory salvataggio info sessioni.')
-        self.parser.add_argument('--model_path', type=str, default='training\\pretrained_models\\',
-                                 help='Percorso directory salvataggio modelli preaddestrati.')
         # Preparazione dati
         self.parser.add_argument('--val_ratio', type=int, default=15,
                                  help='Percorso directory salvataggio info sessioni.')
         self.parser.add_argument('--test_ratio', type=int, default=15,
                                  help='Percorso directory salvataggio modelli preaddestrati.')
-        self.parser.add_argument('--split_type', choices={'LOSO', 'L2SO', 'L3SO'},
+        self.parser.add_argument('--split_type', choices={'LOSO', 'L2SO', 'L3SO', 'segment'}, default='segment',
                                  help='Tipo di split dei dati in train/val/test.')
-        self.parser.add_argument('--remove_neutral_data', action='store_true',
-                                 help='Se impostato, rimuove i segmenti etichettati come neutral.')
         # Opzioni di addestramento
-        self.parser.add_argument('--task', required=True, choices={'pretraining', 'classification'}, type=str,
-                                 help='Task di training da eseguire.')
         self.parser.add_argument('--num_epochs', type=int, default=500,
                                  help='Numero epoche di addestramento.')
         self.parser.add_argument('--num_epochs_to_save', type=int, default=25,
@@ -40,10 +34,6 @@ class Options(object):
                                  help='Fattore riduzione learning rate.')
         self.parser.add_argument('--threshold', type=float, default=0.001,
                                  help='Soglia di tolleranza non miglioramento.')
-        self.parser.add_argument('--model_to_load', type=str, default='',
-                                 help='Nome modello preaddestrato da caricare (solo per classificazione).')
-        self.parser.add_argument('--freeze', action='store_true',
-                                 help='Se impostato, congela tutti i parametri del modello eccetto l output layer (solo per classificazione).')
         self.parser.add_argument('--label', choices={'valence', 'arousal'}, default='valence',
                                  help='Etichetta da predire (solo per classificazione).')
         self.parser.add_argument('--num_optimization_trials', type=int, default=20,
@@ -65,11 +55,6 @@ class Options(object):
                                  help='Numero layers dell encoder.')
         self.parser.add_argument('--pe_type', choices={'fixed', 'learnable'}, default='learnable',
                                  help='Tipo di positional encoding.')
-        # Parametri mascheramento
-        self.parser.add_argument('--masking_ratio', type=float, default=0.15,
-                                 help='Rapporto di valori mascherati.')
-        self.parser.add_argument('--lm', type=int, default=3,
-                                 help='Lunghezza sezioni mascherate.')
         
     def parse(self):
 

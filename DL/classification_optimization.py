@@ -5,11 +5,14 @@ import torch
 import optuna
 from datetime import datetime
 import csv
-from data_preparation import get_classification_dataloaders
-from training_methods import train_classification_model, val_classification_model
 from options import Options
 
+from data_preparation import get_classification_dataloaders
+from training_methods import train_classification_model, val_classification_model
+
+# Funzione trial
 def objective(trial, config, device, run_name):
+    # Determinazione valori iperparametri
     batch_size = trial.suggest_categorical('batch_size', [32, 64, 128, 256])
     d_model = trial.suggest_categorical('d_model', [32, 64, 128, 256])
     dim_feedforward = trial.suggest_categorical('dim_feedforward', [128, 256, 512, 1024, 2048])
@@ -17,7 +20,6 @@ def objective(trial, config, device, run_name):
     num_heads = trial.suggest_categorical('num_heads', [2, 4, 8])
     num_layers = trial.suggest_int('num_layers', 2, 6)
     pe_type = trial.suggest_categorical('pe_type', ['fixed', 'learnable'])
-
     config['batch_size'] = batch_size
     config['d_model'] = d_model
     config['dim_feedforward'] = dim_feedforward
@@ -26,8 +28,10 @@ def objective(trial, config, device, run_name):
     config['num_layers'] = num_layers
     config['pe_type'] = pe_type
     
+    # Acquisizione dati
     train_dataloader, val_dataloader, _ = get_classification_dataloaders(config, device)
 
+    # Definizione modello, ottimizzatore e scheduler
     model = TSTransformerClassifier(config, device)
     model = model.to(device)
     optimizer = optim.AdamW(model.parameters(), lr=config['learning_rate'])
@@ -41,12 +45,13 @@ def objective(trial, config, device, run_name):
                                 min_lr=0, 
                                 eps=1e-8)
 
+    # Training
     for epoch in range(config['num_optimization_epochs']):
         _ = train_classification_model(model, train_dataloader, optimizer, device, epoch)
         val_loss, accuracy, _, _, _ = val_classification_model(model, val_dataloader, device, epoch, task='validation')
-        
         scheduler.step(val_loss)
 
+    # Salvataggio risultati trial
     with open('sessions\\classification_optimization_' + run_name + '.csv', mode='a', newline='') as file:
         writer = csv.writer(file)
         writer.writerow([trial.number+1, accuracy, batch_size, d_model, dim_feedforward, dropout, num_heads, num_layers, pe_type])
@@ -57,6 +62,7 @@ def objective(trial, config, device, run_name):
 
 def main(config):
 
+    # Utilizzo scheda grafica se disponibile
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Creazione file salvataggio sessione

@@ -10,6 +10,16 @@ df_cols = {'ACC': ['x', 'y', 'z'], 'BVP': ['bvp'], 'EDA': ['eda'], 'HR': ['hr']}
 necessary_signals = ['ACC', 'EDA']
 precision = {'ACC': 0, 'BVP': 2, 'EDA': 6, 'HR': 2} # Numero di cifre decimali
 
+def get_users(data_directory):
+
+    users = set()
+    for user_directory in os.listdir(data_directory):
+        if os.path.isdir(os.path.join(data_directory, user_directory)):
+            user_id = user_directory
+            users.add(user_id)
+
+    return list(users)
+
 ####################################################################################################################
 # Modifica della struttura dei dataset:
 # Aggiunta di una colonna contenente il tempo della singola registrazione
