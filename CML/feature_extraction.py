@@ -99,4 +99,4 @@ def process_data():
     result_df = pd.concat([segment_ids, scaled_features_df, labels], axis=1)
     result_df = pd.merge(result_df, users, on='segment_id')
 
-    result_df.to_csv('classic_ml\\features.csv', index=False)
+    result_df.to_csv('CML\\features.csv', index=False)

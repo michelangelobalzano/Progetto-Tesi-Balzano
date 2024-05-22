@@ -175,11 +175,9 @@ training/Library
 training/run_example.txt
 sessions/
 graphs/
-classic_ml/Include
-classic_ml/Scripts
-classic_ml/Lib
-classic_ml/share
-classic_ml/pyvenv.cfg
-classic_ml/features.csv
-classic_ml/result_analisi.py
-classic_ml/results
+CML/Include
+CML/Scripts
+CML/Lib
+CML/share
+CML/pyvenv.cfg
+CML/results

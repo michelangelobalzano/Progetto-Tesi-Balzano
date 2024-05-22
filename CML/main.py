@@ -4,7 +4,6 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
 import xgboost as xgb
 from tqdm import tqdm
-from imblearn.over_sampling import SMOTE
 
 from training_methods import LOSO, LNSO, KF
 from feature_extraction import process_data, remove_neutrals
@@ -17,7 +16,7 @@ remove_neutral_data = True
 
 results_list = []
 
-features_df = pd.read_csv('classic_ml\\features.csv', header='infer')
+features_df = pd.read_csv('CML\\features.csv', header='infer')
 if remove_neutral_data:
     features_df = remove_neutrals(features_df.copy(), label)
 
@@ -97,4 +96,4 @@ for model_name, model in tqdm(models.items(), desc='Processing per model', leave
     })
 
 results_df = pd.DataFrame(results_list)
-results_df.to_csv('classic_ml\\results\\model_results.csv', index=False)
+results_df.to_csv('CML\\results\\model_results.csv', index=False)
