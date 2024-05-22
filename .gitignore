@@ -159,8 +159,7 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-data/
-data2/
+WESAD/
 processed_data/
 preprocessing/pyvenv.cfg
 preprocessing/Scripts/
