@@ -1,5 +1,3 @@
-import os
-from os.path import join
 import pickle
 import pandas as pd
 from collections import Counter
@@ -7,17 +5,9 @@ from tqdm import tqdm
 import numpy as np
 
 from preprocessing_methods import time_calculation, resampling
+from preprocessing import get_users
 
-def get_users(data_directory):
-
-    users = set()
-    for user_directory in os.listdir(data_directory):
-        if os.path.isdir(os.path.join(data_directory, user_directory)):
-            user_id = user_directory
-            users.add(user_id)
-
-    return list(users)
-
+std_labels = True # Indica se standardizzare o meno le etichette
 task_numbers = {
     'Base': 1,
     'TSST': 2,
@@ -124,39 +114,45 @@ for user_id in users:
         tasks.append(task_numbers[tasks_names[i]])
 
     # Standardizzazione delle etichette di valenza e attivazione
-    valence = list(map(int, valence))
-    std_val = []
-    val_mean = np.mean(valence)
-    for i in range(len(valence)):
-        if (valence[i] >= val_mean + 0.5):
-            std_val.append('positive')
-        elif (valence[i] <= val_mean - 0.5):
-            std_val.append('negative')
-        else:
-            std_val.append('neutral')
+    if std_labels:
+        valence = list(map(int, valence))
+        std_val = []
+        val_mean = np.mean(valence)
+        for i in range(len(valence)):
+            if (valence[i] >= val_mean + 0.5):
+                std_val.append('positive')
+            elif (valence[i] <= val_mean - 0.5):
+                std_val.append('negative')
+            else:
+                std_val.append('neutral')
+        valence = std_val
 
-    arousal = list(map(int, arousal))
-    std_aro = []
-    aro_mean = np.mean(arousal)
-    for i in range(len(arousal)):
-        if (arousal[i] >= aro_mean + 0.5):
-            std_aro.append('positive')
-        elif (arousal[i] <= aro_mean - 0.5):
-            std_aro.append('negative')
-        else:
-            std_aro.append('neutral')
+        arousal = list(map(int, arousal))
+        std_aro = []
+        aro_mean = np.mean(arousal)
+        for i in range(len(arousal)):
+            if (arousal[i] >= aro_mean + 0.5):
+                std_aro.append('positive')
+            elif (arousal[i] <= aro_mean - 0.5):
+                std_aro.append('negative')
+            else:
+                std_aro.append('neutral')
+        arousal = std_aro
         
     # Associazione delle etichette ai task corrispondenti
     for i, valore in enumerate(bvp['task']):
         if valore in tasks:
-            bvp.loc[i, 'valence'] = std_val[tasks.index(valore)]
-            bvp.loc[i, 'arousal'] = std_aro[tasks.index(valore)]
+            bvp.loc[i, 'valence'] = valence[tasks.index(valore)]
+            bvp.loc[i, 'arousal'] = arousal[tasks.index(valore)]
         else:
             bvp.loc[i, 'valence'] = None
 
     bvp = bvp.drop(['task'], axis=1)
 
-    bvp.to_csv(f'{data_directory}{user_id}\\BVP_LABELED.csv', index=False)
+    if std_labels:
+        bvp.to_csv(f'{data_directory}{user_id}\\BVP_LABELED.csv', index=False)
+    else:
+        bvp.to_csv(f'{data_directory}{user_id}\\BVP_LABELED_NOT_STD.csv', index=False)
 
     progress_bar.update(1)
 progress_bar.close()

@@ -2,17 +2,9 @@ import os
 from os.path import join
 import pandas as pd
 from tqdm import tqdm
+
 from preprocessing_methods import structure_modification, segmentation, export_df, necessary_signals
-
-def get_users(data_directory):
-
-    users = set()
-    for user_directory in os.listdir(data_directory):
-        if os.path.isdir(os.path.join(data_directory, user_directory)):
-            user_id = user_directory
-            users.add(user_id)
-
-    return list(users)
+from preprocessing import get_users
 
 def read_sensor_data(data_directory, users, signals):
 
@@ -136,10 +128,10 @@ def labeled_data_preprocessing(data_directory, df_name, signals, target_freq, w_
     # Esportazione delle features del dataset
     for signal in signals:
         print(f"Esportazione {signal}...")
-        export_df(segmented_data[signal], data_directory, signal)
+        #export_df(segmented_data[signal], data_directory, signal)
     print(f"Esportazione BVP...")
-    export_df(segmented_data['BVP_LABELED'], data_directory, 'BVP')
+    #export_df(segmented_data['BVP_LABELED'], data_directory, 'BVP')
     print(f"Esportazione etichette...")
-    export_df(valence_df, data_directory, 'VALENCE')
-    export_df(arousal_df, data_directory, 'AROUSAL')
+    export_df(valence_df, data_directory, 'VALENCE_NOT_STD')
+    export_df(arousal_df, data_directory, 'AROUSAL_NOT_STD')
     
