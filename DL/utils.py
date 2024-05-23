@@ -1,14 +1,7 @@
-import torch
-import random
 import csv
 
 # Salvataggio info classificazione
-def save_session_info(model_name, 
-                             config,
-                             epoch_info,
-                             num_epochs,
-                             elapsed_time,
-                             test_info=None):
+def save_session_info(model_name, config, epoch_info, num_epochs, elapsed_time, test_info=None):
     with open(config['info_path'] + config['label'] + '_' + model_name + '.csv', mode='w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(['task', 'classification'])

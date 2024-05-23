@@ -9,7 +9,7 @@ from datetime import datetime
 from training_methods import LOSO, LNSO, KF
 from feature_extraction import feature_extraction, remove_neutrals
 
-label = 'valence' # Etichetta da classificare
+label = 'arousal' # Etichetta da classificare
 results_list = [] # Lista dei risultati
 models = {
     'xgb': xgb.XGBClassifier(max_depth=3, n_estimators=100, learning_rate=0.01),
@@ -87,4 +87,4 @@ for model_name, model in tqdm(models.items(), desc='Processing per model', leave
 current_datetime = datetime.now()
 run_name = current_datetime.strftime("%m-%d_%H-%M")
 results_df = pd.DataFrame(results_list)
-results_df.to_csv(f'CML\\results\\CML_{run_name}.csv', index=False)
+results_df.to_csv(f'CML\\results\\{label}_{run_name}.csv', index=False)

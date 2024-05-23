@@ -149,23 +149,26 @@ def WESAD_preprocessing(signals, target_freq, w_size, w_step_size):
     export_df(valence_df, data_directory, 'VALENCE')
     export_df(arousal_df, data_directory, 'AROUSAL')
 
+    # Normalizzazione
+    std_data = {}
     for signal in signals:
-        for col in cols_to_normalize[signal]:
-            segmented_data[signal][col] = segmented_data[signal][col].astype(float)
-        segmented_data[signal]['segment_id'] = segmented_data[signal]['segment_id'].astype(np.int64)
-    
+        std_data[signal] = pd.DataFrame()
     progress_bar = tqdm(total=len(signals), desc="Normalization")
     for signal in signals:
         for col in cols_to_normalize[signal]:
+            segmented_data[signal][col] = segmented_data[signal][col].astype(float)
             mean = segmented_data[signal][col].mean()
             std = segmented_data[signal][col].std()
-            segmented_data[signal][col] = round((segmented_data[signal][col] - mean) / std, precision[signal])
+            std_data[signal][col] = round((segmented_data[signal][col] - mean) / std, precision[signal])
+        segmented_data[signal]['segment_id'] = segmented_data[signal]['segment_id'].astype(np.int64)
+        std_data[signal]['segment_id'] = segmented_data[signal]['segment_id']
         progress_bar.update(1)
     progress_bar.close()
 
     progress_bar = tqdm(total=len(signals), desc="Exportation")
     for signal in signals:
-        segmented_data[signal].to_csv(f'processed_data\\{signal}.csv', index=False)
+        segmented_data[signal].to_csv(f'processed_data\\{signal}_NOT_STD.csv', index=False)
+        std_data[signal].to_csv(f'processed_data\\{signal}.csv', index=False)
         valence_df.to_csv(f'processed_data\\VALENCE.csv', index=False)
         arousal_df.to_csv(f'processed_data\\AROUSAL.csv', index=False)
         progress_bar.update(1)

@@ -48,9 +48,9 @@ def feature_extraction():
     users = pd.read_csv('processed_data\\labeled_user_ids.csv', header='infer')
 
     # Lettura dei df
-    bvp_df = pd.read_csv('processed_data\\BVP_LABELED.csv')
-    eda_df = pd.read_csv('processed_data\\EDA_LABELED.csv')
-    hr_df = pd.read_csv('processed_data\\HR_LABELED.csv')
+    bvp_df = pd.read_csv('processed_data\\BVP_NOT_STD.csv')
+    eda_df = pd.read_csv('processed_data\\EDA_NOT_STD.csv')
+    hr_df = pd.read_csv('processed_data\\HR_NOT_STD.csv')
     valence_df = pd.read_csv('processed_data\\VALENCE.csv')
     arousal_df = pd.read_csv('processed_data\\AROUSAL.csv')
 

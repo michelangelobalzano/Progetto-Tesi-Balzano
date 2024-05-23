@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from torch.nn.modules import MultiheadAttention, Linear, Dropout, BatchNorm1d
 import math
 
+# Positional encoding fisso
 class FixedPositionalEncoding(nn.Module):
     
     def __init__(self, segment_length, d_model, dropout, device, scale_factor=1.0):
@@ -24,6 +25,7 @@ class FixedPositionalEncoding(nn.Module):
         x = x + self.pe[:x.size(0), :]
         return self.dropout(x)
     
+# Positional encoding learnable
 class LearnablePositionalEncoding(nn.Module):
 
     def __init__(self, segment_length, d_model, dropout):
@@ -37,6 +39,7 @@ class LearnablePositionalEncoding(nn.Module):
         x = x + self.pe[:x.size(0), :]
         return self.dropout(x)
 
+# Singolo livello del transformer encoder
 class MyEncoderLayer(nn.modules.Module):
     
     def __init__(self, d_model, dim_feedforward, num_heads, dropout=0.1):
@@ -74,6 +77,7 @@ class MyEncoderLayer(nn.modules.Module):
 
         return data
 
+# Modello
 class TSTransformerClassifier(nn.Module):
     def __init__(self, config, device):
         super(TSTransformerClassifier, self).__init__()

@@ -1,16 +1,16 @@
 import torch
 import torch.nn as nn
-from sklearn.metrics import precision_score, recall_score, f1_score
 from tqdm import tqdm
+from sklearn.metrics import precision_score, recall_score, f1_score
 
-# Calcolo della loss per la classificazione
+# Calcolo della loss
 def loss_function(predictions, labels):
 
     criterion = nn.CrossEntropyLoss()
 
     return criterion(predictions, labels)
 
-# Train di un epoca
+# Training di un epoca
 def train_model(model, dataloader, optimizer, device, epoch):
     
     model.train()
@@ -37,6 +37,7 @@ def train_model(model, dataloader, optimizer, device, epoch):
 
     return average_loss
 
+# Validation di un epoca
 def val_model(model, dataloader, device, epoch=None, task=''):
 
     model.eval()

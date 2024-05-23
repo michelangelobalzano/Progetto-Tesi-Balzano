@@ -22,9 +22,9 @@ def LOSO(model, X, y, groups):
         y_pred = model.predict(X_test)
 
         accuracy.append(accuracy_score(y_test, y_pred))
-        precision.append(precision_score(y_test, y_pred, average='weighted', zero_division=0))
-        recall.append(recall_score(y_test, y_pred, average='weighted', zero_division=0))
-        f1.append(f1_score(y_test, y_pred, average='weighted', zero_division=0))
+        precision.append(precision_score(y_test, y_pred, average='weighted', zero_division=1))
+        recall.append(recall_score(y_test, y_pred, average='weighted', zero_division=1))
+        f1.append(f1_score(y_test, y_pred, average='weighted', zero_division=1))
 
     mean_accuracy = round(sum(accuracy) / len(accuracy), 4)
     mean_precision = round(sum(precision) / len(precision), 4)
@@ -55,9 +55,9 @@ def LNSO(model, X, y, groups, num_subject_out):
         y_pred = model.predict(X_test)
 
         accuracy.append(accuracy_score(y_test, y_pred))
-        precision.append(precision_score(y_test, y_pred, average='weighted', zero_division=0))
-        recall.append(recall_score(y_test, y_pred, average='weighted', zero_division=0))
-        f1.append(f1_score(y_test, y_pred, average='weighted', zero_division=0))
+        precision.append(precision_score(y_test, y_pred, average='weighted', zero_division=1))
+        recall.append(recall_score(y_test, y_pred, average='weighted', zero_division=1))
+        f1.append(f1_score(y_test, y_pred, average='weighted', zero_division=1))
 
     mean_accuracy = round(sum(accuracy) / len(accuracy), 4)
     mean_precision = round(sum(precision) / len(precision), 4)
@@ -83,9 +83,9 @@ def KF(model, X, y, num_folds):
         y_pred = model.predict(X_test)
         
         accuracy.append(accuracy_score(y_test, y_pred))
-        precision.append(precision_score(y_test, y_pred, average='weighted', zero_division=0))
-        recall.append(recall_score(y_test, y_pred, average='weighted', zero_division=0))
-        f1.append(f1_score(y_test, y_pred, average='weighted', zero_division=0))
+        precision.append(precision_score(y_test, y_pred, average='weighted', zero_division=1))
+        recall.append(recall_score(y_test, y_pred, average='weighted', zero_division=1))
+        f1.append(f1_score(y_test, y_pred, average='weighted', zero_division=1))
 
     mean_accuracy = round(sum(accuracy) / len(accuracy), 4)
     mean_precision = round(sum(precision) / len(precision), 4)

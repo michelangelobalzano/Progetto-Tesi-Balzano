@@ -1,6 +1,5 @@
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from transformer import TSTransformerClassifier
 import torch
 import time
 from datetime import datetime
@@ -11,6 +10,7 @@ import random
 from data_preparation import get_segment_dataloaders, get_subject_dataloaders, load_data
 from training_methods import train_model, val_model
 from utils import save_session_info
+from transformer import TSTransformerClassifier
 
 def main(config):
 
@@ -39,12 +39,12 @@ def main(config):
 
         num_run = 15
         subjects = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
-        if config['batch_size'] > 64:
-                config['batch_size'] = 64
+        if config['batch_size'] > 16:
+                config['batch_size'] = 16
 
         if config['split_type'] == 'LOSO':
-            val_subjects =  [[1]]
-            test_subjects = [[3]]
+            val_subjects =  [[1], [2], [3], [4], [5], [6], [7], [8], [9], [10], [11], [12], [13], [14], [15]]
+            test_subjects = [[2], [3], [4], [5], [6], [7], [8], [9], [10], [11], [12], [13], [14], [15], [1]]
         
         elif config['split_type'] == 'L2SO':
             subject_combinations = list(combinations(subjects, 2))
@@ -67,6 +67,7 @@ def main(config):
                 test_subjects.append(combo2)
     
     for i in range(num_run):
+        print(f'\n\niterazione {i}')
 
         # Definizione dell'ottimizzatore e scheduler
         optimizer = optim.AdamW(model.parameters(), lr=config['learning_rate'])

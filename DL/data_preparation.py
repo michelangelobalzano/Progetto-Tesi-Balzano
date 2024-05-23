@@ -32,7 +32,7 @@ def load_data(config):
 
     return data, labels, users
 
-# Suddivisione dei segmenti in train val e test per la task classification
+# Split dei dati per segmento
 def segment_data_split(data, labels, val_ratio, test_ratio, signals):
 
     segment_ids = data[signals[0]]['segment_id'].unique()
@@ -52,6 +52,7 @@ def segment_data_split(data, labels, val_ratio, test_ratio, signals):
 
     return train_data, train_labels, val_data, val_labels, test_data, test_labels
 
+# Split dei dati per soggetto
 def subject_data_split(data, labels, users, val_subjects, test_subjects, signals):
 
     val_segment_ids = users[users['user_id'].isin(val_subjects)]['segment_id'].tolist()
@@ -94,45 +95,40 @@ def data_to_tensor(data, labels, num_signals, num_segments, segment_length, labe
     
     return prepared_data, prepared_labels
 
-# Collate Function per i batch della classificazione
+# Collate Function per i batch
 def my_collate_fn(batch):
 
     return torch.stack([item[0] for item in batch]), torch.tensor([item[1] for item in batch])
 
-# Caricamento dati e creazione dataloaders per classificazione
+# Creazione dei dataloader con split per soggetto
 def get_subject_dataloaders(data, labels, users, config, device, val_subjects, test_subjects):
     # Split dei dati
     train, train_labels, val, val_labels, test, test_labels = subject_data_split(data, labels, users, val_subjects, test_subjects, config['signals'])
     
     train_dataloader, val_dataloader, test_dataloader = get_dataloaders(train, train_labels, val, val_labels, test, test_labels, config, device)
 
-    print(len(train_dataloader))
-    print(len(val_dataloader))
-    print(len(test_dataloader))
-
     return train_dataloader, val_dataloader, test_dataloader
 
-# Caricamento dati e creazione dataloaders per classificazione
+# Creazione dei dataloader con split per segmento
 def get_segment_dataloaders(data, labels, config, device):
     # Split dei dati
     train, train_labels, val, val_labels, test, test_labels = segment_data_split(data, labels, config['val_ratio'], config['test_ratio'], config['signals'])
     
     train_dataloader, val_dataloader, test_dataloader = get_dataloaders(train, train_labels, val, val_labels, test, test_labels, config, device)
 
-    print(len(train_dataloader))
-    print(len(val_dataloader))
-    print(len(test_dataloader))
-
     return train_dataloader, val_dataloader, test_dataloader
 
+# Restituisce i dataloader di input per il transformer a partire dai set di dati
 def get_dataloaders(train, train_labels, val, val_labels, test, test_labels, config, device):
     num_train_segments = len(train[config['signals'][0]].groupby('segment_id'))
     num_val_segments = len(val[config['signals'][0]].groupby('segment_id'))
     num_test_segments = len(test[config['signals'][0]].groupby('segment_id'))
+
     # Preparazione dati
     train_data, train_labels = data_to_tensor(train, train_labels, config['num_signals'], num_train_segments, config['segment_length'], config['label'])
     val_data, val_labels = data_to_tensor(val, val_labels, config['num_signals'], num_val_segments, config['segment_length'], config['label'])
     test_data, test_labels = data_to_tensor(test, test_labels, config['num_signals'], num_test_segments, config['segment_length'], config['label'])
+    
     # Creazione del DataLoader
     train_data = train_data.permute(1, 0, 2).to(device)
     val_data = val_data.permute(1, 0, 2).to(device)
