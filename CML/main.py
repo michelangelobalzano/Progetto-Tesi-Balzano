@@ -9,17 +9,25 @@ from datetime import datetime
 from training_methods import LOSO, LNSO, KF
 from feature_extraction import feature_extraction, remove_neutrals
 
-label = 'arousal' # Etichetta da classificare
+label = 'valence' # Etichetta da classificare
 results_list = [] # Lista dei risultati
 models = {
-    'xgb': xgb.XGBClassifier(max_depth=3, n_estimators=100, learning_rate=0.01),
-    'knn': KNeighborsClassifier(metric='manhattan', n_neighbors=3, weights='uniform'),
-    'rf': RandomForestClassifier(max_depth=20, min_samples_leaf=1, min_samples_split=5, n_estimators=50, random_state=42),
-    'dt': DecisionTreeClassifier(criterion='gini', max_depth=None, min_samples_leaf=5, min_samples_split=2, splitter='random', random_state=42)
-} # Modelli utilizzati
+    'valence': {
+        'xgb': xgb.XGBClassifier(max_depth=3, n_estimators=50, learning_rate=0.01),
+        'knn': KNeighborsClassifier(metric='manhattan', n_neighbors=3, weights='uniform'),
+        'rf': RandomForestClassifier(max_depth=30, min_samples_leaf=1, min_samples_split=10, n_estimators=50, random_state=42),
+        'dt': DecisionTreeClassifier(criterion='gini', max_depth=30, min_samples_leaf=1, min_samples_split=10, splitter='random', random_state=42)
+    },
+    'arousal': {
+        'xgb': xgb.XGBClassifier(max_depth=10, n_estimators=50, learning_rate=0.01),
+        'knn': KNeighborsClassifier(metric='manhattan', n_neighbors=9, weights='distance'),
+        'rf': RandomForestClassifier(max_depth=30, min_samples_leaf=1, min_samples_split=10, n_estimators=100, random_state=42),
+        'dt': DecisionTreeClassifier(criterion='gini', max_depth=20, min_samples_leaf=10, min_samples_split=20, splitter='random', random_state=42)
+    }
+} # Modelli utilizzati con iperparametri ottimizzati per label
 
 # Estrazione delle features (Commentare se già effettuata)
-#feature_extraction()
+'''feature_extraction()'''
 
 # Lettura dataframe delle features
 features_df = pd.read_csv('CML\\features.csv', header='infer')
@@ -31,7 +39,7 @@ features_df = remove_neutrals(features_df.copy(), label)
 X = features_df.drop(['segment_id', 'valence', 'arousal', 'user_id'], axis=1)
 y = features_df[label]
 groups = features_df['user_id']
-for model_name, model in tqdm(models.items(), desc='Processing per model', leave=False):
+for model_name, model in tqdm(models[label].items(), desc='Processing per model', leave=False):
     # Leave One Subject Out
     acc, prec, rec, f1 = LOSO(model, X, y, groups)
     results_list.append({
