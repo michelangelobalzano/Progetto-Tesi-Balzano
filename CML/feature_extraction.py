@@ -73,6 +73,9 @@ def feature_extraction():
     features_df = pd.merge(features_df, valence_df, on='segment_id')
     features_df = pd.merge(features_df, arousal_df, on='segment_id')
 
+    # Esportazione delle features estratte non normalizzate
+    features_df.to_csv('CML\\features_NOT_STD.csv', index=False)
+
     # Normalizzazione delle features
     features = features_df.drop(['segment_id', 'valence', 'arousal'], axis=1)
     labels = features_df[['valence', 'arousal']]
@@ -81,7 +84,7 @@ def feature_extraction():
     scaled_features = scaler.fit_transform(features)
     scaled_features_df = pd.DataFrame(scaled_features, columns=features.columns)
 
-    # Esportazione delle features estratte
+    # Esportazione delle features estratte normalizzate
     result_df = pd.concat([segment_ids, scaled_features_df, labels], axis=1)
     result_df = pd.merge(result_df, users, on='segment_id')
     result_df.to_csv('CML\\features.csv', index=False)
