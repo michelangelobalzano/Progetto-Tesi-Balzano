@@ -134,7 +134,7 @@ def WESAD_preprocessing(signals, target_freq, w_size, w_step_size):
         row = {'segment_id': segment_id, 'user_id': segment['user_id'].iloc[0]}
         row_df = pd.DataFrame([row])
         user_ids_df = pd.concat([user_ids_df, row_df])
-    user_ids_df.to_csv('processed_data\\labeled_user_ids.csv',index=False)
+    user_ids_df.to_csv('processed_data\\USER_SEGMENT_IDS.csv',index=False)
         
     # Eliminazione colonne inutili
     for signal in signals:

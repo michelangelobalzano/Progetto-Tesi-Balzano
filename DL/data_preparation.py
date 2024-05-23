@@ -26,7 +26,7 @@ def load_data(config):
         labels = pd.read_csv(config['data_path'] + 'VALENCE.csv')
     elif config['label'] == 'arousal':
         labels = pd.read_csv(config['data_path'] + 'AROUSAL.csv')
-    users = pd.read_csv(config['data_path'] + 'labeled_user_ids.csv')
+    users = pd.read_csv(config['data_path'] + 'USER_SEGMENT_IDS.csv')
 
     data, labels, users = remove_neutrals(data, labels, users, config)
 

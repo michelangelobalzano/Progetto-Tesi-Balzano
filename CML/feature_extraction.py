@@ -45,7 +45,7 @@ def extract_segment_features(segment, segment_id):
 # Estrazione delle features
 def feature_extraction():
     
-    users = pd.read_csv('processed_data\\labeled_user_ids.csv', header='infer')
+    users = pd.read_csv('processed_data\\USER_SEGMENT_IDS.csv', header='infer')
 
     # Lettura dei df
     bvp_df = pd.read_csv('processed_data\\BVP_NOT_STD.csv')
