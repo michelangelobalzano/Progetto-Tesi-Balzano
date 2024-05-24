@@ -3,7 +3,6 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 import torch
 import time
 from datetime import datetime
-from options import Options
 from itertools import combinations
 import random
 
@@ -11,6 +10,7 @@ from data_preparation import get_segment_dataloaders, get_subject_dataloaders, l
 from training_methods import train_model, val_model
 from utils import save_session_info
 from transformer import TSTransformerClassifier
+from options import Options
 
 def main(config):
 

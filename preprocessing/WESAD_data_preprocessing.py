@@ -5,6 +5,7 @@ from tqdm import tqdm
 import numpy as np
 
 from preprocessing_methods import structure_modification, segmentation, export_df, get_users, necessary_signals, precision
+from WESAD_label_extraction import extract_WESAD_labels
 
 cols_to_normalize = {
     'ACC': ['x', 'y', 'z'],
@@ -13,7 +14,6 @@ cols_to_normalize = {
     'HR': ['hr'],
     'TEMP': ['temp']
 }
-data_directory = 'WESAD\\'
 
 def read_sensor_data(data_directory, users, signals):
 
@@ -46,16 +46,18 @@ def read_sensor_data(data_directory, users, signals):
 
     return data
 
-def WESAD_preprocessing(signals, target_freq, w_size, w_step_size):
+def WESAD_preprocessing(config):
     
-    users = get_users(data_directory)
-    data = read_sensor_data(data_directory, users, signals)
+    signals = config['signals_to_process']
+    users = get_users(config['data_directory'])
+    extract_WESAD_labels(config, users)
+    data = read_sensor_data(config['data_directory'], users, signals)
 
     progress_bar = tqdm(total=len(users), desc="User preprocessing")
     for user_id in users:
         # Modifica dei dataframe
         for signal in set(signals) | set(necessary_signals):
-            data[user_id][signal] = structure_modification(data[user_id][signal].copy(), signal, target_freq)
+            data[user_id][signal] = structure_modification(data[user_id][signal].copy(), signal, config['resampling_frequency'])
         progress_bar.update(1)
     progress_bar.close()
 
@@ -93,16 +95,16 @@ def WESAD_preprocessing(signals, target_freq, w_size, w_step_size):
         data_temp = {}
         for signal in signals:
             if signal == 'BVP':
-                data_temp[signal] = segmentation(data[user_id]['BVP_LABELED'], segment_prefix=f'{user_id}', w_size=w_size, w_step_size=w_step_size, user_id=user_id)
+                data_temp[signal] = segmentation(data[user_id]['BVP_LABELED'], segment_prefix=f'{user_id}', w_size=config['segmentation_window_size'], w_step_size=config['segmentation_step_size'], user_id=user_id)
             else:
-                data_temp[signal] = segmentation(data[user_id][signal], segment_prefix=f'{user_id}', w_size=w_size, w_step_size=w_step_size, user_id=user_id)
+                data_temp[signal] = segmentation(data[user_id][signal], segment_prefix=f'{user_id}', w_size=config['segmentation_window_size'], w_step_size=config['segmentation_step_size'], user_id=user_id)
             segmented_data[signal] = pd.concat([segmented_data[signal], data_temp[signal]], axis=0, ignore_index=True)
         progress_bar.update(1)
     progress_bar.close()
 
     # Eliminazione dei segmenti creati che non contengono frequency * window_size valori
     for signal in signals:
-        segmented_data[signal] = segmented_data[signal].groupby('segment_id').filter(lambda x: len(x) == target_freq * w_size)
+        segmented_data[signal] = segmented_data[signal].groupby('segment_id').filter(lambda x: len(x) == config['resampling_frequency'] * config['w_size'])
 
     # Applicazione delle etichette di maggioranza ad ogni segmento
     valence_df = pd.DataFrame(columns=['segment_id', 'valence'])
@@ -144,10 +146,10 @@ def WESAD_preprocessing(signals, target_freq, w_size, w_step_size):
     # Esportazione delle features del dataset
     for signal in signals:
         print(f"Esportazione {signal}...")
-        export_df(segmented_data[signal], data_directory, signal)
+        export_df(segmented_data[signal], config['data_directory'], signal)
     print(f"Esportazione etichette...")
-    export_df(valence_df, data_directory, 'VALENCE')
-    export_df(arousal_df, data_directory, 'AROUSAL')
+    export_df(valence_df, config['data_directory'], 'VALENCE')
+    export_df(arousal_df, config['data_directory'], 'AROUSAL')
 
     # Normalizzazione
     std_data = {}
