@@ -14,13 +14,9 @@ Prima di poter classificare mediante i modelli CML o con il transformer, è nece
 
 ## Preprocessing dei dati
 
-Per processare i dati, creare un ambiente virtuale relativo al modulo di preprocessing. Dalla cartella principale del repository, spostarsi nella cartella del preprocessing con il comando:
+Aprire il prompt dei comandi nella cartella principale del repository.
 
-```bash
-cd preprocessing
-```
-
-Creare l'ambiente virtuale del preprocessing:
+Creare l'ambiente virtuale:
 
 ```bash
 python -m venv preprocessing
@@ -29,13 +25,13 @@ python -m venv preprocessing
 Installare le librerie necessarie al preprocessing:
 
 ```bash
-pip install -r requirements.txt
+pip install -r preprocessing/requirements.txt
 ```
 
 Eseguire il preprocessing:
 
 ```bash
-python main.py --segmentation_window_size 60 --segmentation_step_size 10 --neutral_range 0.2
+python preprocessing/main.py --segmentation_window_size 60 --segmentation_step_size 10 --neutral_range 0.2
 ```
 
 I parametri utilizzabili sono i seguenti:
@@ -46,11 +42,7 @@ I parametri utilizzabili sono i seguenti:
 
 ## Classificazione mediante modelli CML
 
-Dalla cartella principale del repository, spostarsi nella cartella CML con il seguente comando:
-
-```bash
-cd CML
-```
+Aprire il prompt dei comandi nella cartella principale del repository.
 
 Creare l'ambiente virtuale:
 
@@ -61,12 +53,68 @@ python -m venv CML
 Installare le librerie necessarie:
 
 ```bash
-pip install -r requirements.txt
+pip install -r CML/requirements.txt
 ```
+
+Prima di ottimizzare gli iperparametri, o classificare direttamente, bisogna estrarre le features dai dati con il seguente comando:
+
+```bash
+python CML/feature_extraction.py
+```
+
+Questo comando non necessita di alcun parametro.
+
+Una volta eseguito il comando, verrà creato un file chiamato "features.csv" che verrà utilizzato per l'ottimizzazione degli iperparametri o per la classificazione. Non è necessario ripetere il comando per ogni ottimizzazione o classificazione se il file è stato già creato.
 
 ### Ottimizzazione degli iperparametri (opzionale)
 
+Eseguire il seguente comando per ottenere i migliori iperparametri per tutti i modelli di machine learning classico testati:
+
+```bash
+python CML/param_optimization.py --label arousal --model xgb
+```
+
+I parametri utilizzabili sono i seguenti:
+* label: (obbligatorio) etichetta del quale ottimizzare gli iperparametri. Valori possibili: [valence, arousal]. 
+* model: (obbligatorio) sigla del modello da utilizzare. xgb=XGBoost, knn=kNN, rf=random forest, dt=decision tree. Valori possibili: [xgb, knn, rf, dt]. 
+
 ### Classificazione
+
+Eseguire il seguente comando per classificare:
+
+```bash
+python CML/main.py --label valence --model xgb --split_type LOSO --xgb_max_depth 3 --xgb_n_estimators 50 --xgb_learning_rate 0.01
+```
+
+I parametri utilizzabili sono i seguenti:
+* label: (opzionale) etichetta da classificare. Valori possibili: [valence, arousal] Valore di default: valence. 
+* model: (obbligatorio) sigla del modello da utilizzare. xgb=XGBoost, knn=kNN, rf=random forest, dt=decision tree. Valori possibili: [xgb, knn, rf, dt]. 
+* split_type: (obbligatorio) sigla tipo di split dei dati. LOSO=Leave One Subject Out, L2SO, L3SO=Leave 2, 3 subjects out, KF5, KF10=K-Fold Cross Validation k=5, 10. Valori possibili: [xgb, knn, rf, dt]
+
+
+* xgb_max_depth: (opzionale) profondita' massima. Valori possibili: [3, 5, 10, 20, 30], default: 3.
+* xgb_n_estimators: (opzionale) numero di alberi da valutare. Valori possibili: [50, 100, 200], default: 50.
+* xgb_learning_rate: (opzionale) tasso apprendimento. Valori possibili: [0.01, 0.1, 0.3, 0.5], default: 0.01.
+
+
+* knn_n_neighbors: (opzionale) numero di vicini. Valori possibili: [1, 3, 5, 7, 9, 11, 13, 15], default: 3.
+* knn_weights: (opzionale) metodo di peso dei vicini. Valori possibili: [uniform, distance], default: uniform.
+* knn_metric: (opzionale) metrica per calcolare la distanza. Valori possibili: [euclidean, manhattan, minkowski], default: manhattan.
+
+
+* rf_max_depth: (opzionale) profondita' massima. Valori possibili: [None, 10, 20, 30], default: 30.
+* rf_n_estimators: (opzionale) numero di alberi da valutare. Valori possibili: [50, 100, 200], default: 50.
+* rf_min_samples_split: (opzionale) numero minimo di campioni richiesti per dividere un nodo interno. Valori possibili: [2, 5, 10], default: 10.
+* rf_min_samples_leaf: (opzionale) numero minimo di campioni che deve avere un nodo foglia. Valori possibili: [1, 2, 4], default: 1.
+
+
+* dt_max_depth: (opzionale) profondita' massima. Valori possibili: [None, 10, 20, 30], default: 30.
+* dt_min_samples_split: (opzionale) numero minimo di campioni richiesti per dividere un nodo interno. Valori possibili: [2, 10, 20], default: 10.
+* dt_min_samples_leaf: (opzionale) numero minimo di campioni che deve avere un nodo foglia. Valori possibili: [1, 5, 10], default: 1.
+* dt_criterion: (opzionale) funzione di misurazione qualita' di una divisione. Valori possibili: [gini, entropy], default: gini.
+* dt_splitter: (opzionale) strategia di scelta della divisione. Valori possibili: [best, random], default: random.
+
+Inserire parametri non relativi al modello scelto non ha alcun effetto.
 
 ## Classificazione mediante transformer
 

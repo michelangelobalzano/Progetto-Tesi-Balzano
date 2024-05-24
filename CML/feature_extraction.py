@@ -41,50 +41,44 @@ def extract_segment_features(segment, segment_id):
         features[f'{column}_entropy'] = round(-np.sum(prob * np.log2(prob)), 2)
         
     return pd.DataFrame(features, index=[0])
-
-# Estrazione delle features
-def feature_extraction():
     
-    users = pd.read_csv('processed_data\\USER_SEGMENT_IDS.csv', header='infer')
+users = pd.read_csv('processed_data\\USER_SEGMENT_IDS.csv', header='infer')
 
-    # Lettura dei df
-    bvp_df = pd.read_csv('processed_data\\BVP_NOT_STD.csv')
-    eda_df = pd.read_csv('processed_data\\EDA_NOT_STD.csv')
-    hr_df = pd.read_csv('processed_data\\HR_NOT_STD.csv')
-    valence_df = pd.read_csv('processed_data\\VALENCE.csv')
-    arousal_df = pd.read_csv('processed_data\\AROUSAL.csv')
+# Lettura dei df
+bvp_df = pd.read_csv('processed_data\\BVP_NOT_STD.csv')
+eda_df = pd.read_csv('processed_data\\EDA_NOT_STD.csv')
+hr_df = pd.read_csv('processed_data\\HR_NOT_STD.csv')
+valence_df = pd.read_csv('processed_data\\VALENCE.csv')
+arousal_df = pd.read_csv('processed_data\\AROUSAL.csv')
 
-    # Mappatura delle etichette in valori interi
-    valence_df['valence'] = valence_df['valence'].map(label_map).astype(int)
-    arousal_df['arousal'] = arousal_df['arousal'].map(label_map).astype(int)
+# Mappatura delle etichette in valori interi
+valence_df['valence'] = valence_df['valence'].map(label_map).astype(int)
+arousal_df['arousal'] = arousal_df['arousal'].map(label_map).astype(int)
 
-    # Unione dei singoli df in un unico df
-    merged_df = pd.DataFrame()
-    merged_df['segment_id'] = bvp_df['segment_id']
-    merged_df['bvp'] = bvp_df['bvp'].astype(float)
-    merged_df['eda'] = eda_df['eda'].astype(float)
-    merged_df['hr'] = hr_df['hr'].astype(float)
+# Unione dei singoli df in un unico df
+merged_df = pd.DataFrame()
+merged_df['segment_id'] = bvp_df['segment_id']
+merged_df['bvp'] = bvp_df['bvp'].astype(float)
+merged_df['eda'] = eda_df['eda'].astype(float)
+merged_df['hr'] = hr_df['hr'].astype(float)
 
-    # Creazione dataframe delle features
-    features_df = pd.DataFrame()
-    for segment_id, segment_data in tqdm(merged_df.groupby('segment_id'), desc='feature extraction', leave=False):
-        segment_features = extract_segment_features(segment_data, segment_id)
-        features_df = pd.concat([features_df, segment_features], axis=0, ignore_index=True)
-    features_df = pd.merge(features_df, valence_df, on='segment_id')
-    features_df = pd.merge(features_df, arousal_df, on='segment_id')
+# Creazione dataframe delle features
+features_df = pd.DataFrame()
+for segment_id, segment_data in tqdm(merged_df.groupby('segment_id'), desc='Estrazione features', leave=False):
+    segment_features = extract_segment_features(segment_data, segment_id)
+    features_df = pd.concat([features_df, segment_features], axis=0, ignore_index=True)
+features_df = pd.merge(features_df, valence_df, on='segment_id')
+features_df = pd.merge(features_df, arousal_df, on='segment_id')
 
-    # Esportazione delle features estratte non normalizzate
-    features_df.to_csv('CML\\features_NOT_STD.csv', index=False)
+# Normalizzazione delle features
+features = features_df.drop(['segment_id', 'valence', 'arousal'], axis=1)
+labels = features_df[['valence', 'arousal']]
+segment_ids = features_df[['segment_id']]
+scaler = StandardScaler()
+scaled_features = scaler.fit_transform(features)
+scaled_features_df = pd.DataFrame(scaled_features, columns=features.columns)
 
-    # Normalizzazione delle features
-    features = features_df.drop(['segment_id', 'valence', 'arousal'], axis=1)
-    labels = features_df[['valence', 'arousal']]
-    segment_ids = features_df[['segment_id']]
-    scaler = StandardScaler()
-    scaled_features = scaler.fit_transform(features)
-    scaled_features_df = pd.DataFrame(scaled_features, columns=features.columns)
-
-    # Esportazione delle features estratte normalizzate
-    result_df = pd.concat([segment_ids, scaled_features_df, labels], axis=1)
-    result_df = pd.merge(result_df, users, on='segment_id')
-    result_df.to_csv('CML\\features.csv', index=False)
+# Esportazione delle features estratte normalizzate
+result_df = pd.concat([segment_ids, scaled_features_df, labels], axis=1)
+result_df = pd.merge(result_df, users, on='segment_id')
+result_df.to_csv('CML\\features.csv', index=False)

@@ -1,4 +1,0 @@
-xgb: {'learning_rate': 0.01, 'max_depth': 10, 'n_estimators': 50}
-knn: {'metric': 'manhattan', 'n_neighbors': 9, 'weights': 'distance'}
-rf: {'max_depth': 30, 'min_samples_leaf': 1, 'min_samples_split': 10, 'n_estimators': 100}
-dt: {'criterion': 'gini', 'max_depth': 20, 'min_samples_leaf': 10, 'min_samples_split': 20, 'splitter': 'random'}

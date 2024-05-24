@@ -14,7 +14,7 @@ def LOSO(model, X, y, groups):
     recall = []
     f1 = []
 
-    for train_index, test_index in tqdm(logo.split(X, y, groups), desc='LOSO', leave=False):
+    for train_index, test_index in tqdm(logo.split(X, y, groups), desc='Classificazione con LOSO', leave=False):
         X_train, X_test = X.iloc[train_index], X.iloc[test_index]
         y_train, y_test = y.iloc[train_index], y.iloc[test_index]
         
@@ -44,7 +44,7 @@ def LNSO(model, X, y, groups, num_subject_out):
     recall = []
     f1 = []
 
-    for combination in tqdm(random_combinations, desc=f'L{num_subject_out}SO', leave=False):
+    for combination in tqdm(random_combinations, desc=f'Classificazione con L{num_subject_out}SO', leave=False):
         test_indices = np.where(np.isin(groups, combination))
         train_indices = np.delete(np.arange(len(X)), test_indices)
 
@@ -75,7 +75,7 @@ def KF(model, X, y, num_folds):
     recall = []
     f1 = []
 
-    for train_index, test_index in tqdm(kf.split(X), desc=f'KF({num_folds})', leave=False):
+    for train_index, test_index in tqdm(kf.split(X), desc=f'Classificazione con KF({num_folds})', leave=False):
         X_train, X_test = X.iloc[train_index], X.iloc[test_index]
         y_train, y_test = y.iloc[train_index], y.iloc[test_index]
         

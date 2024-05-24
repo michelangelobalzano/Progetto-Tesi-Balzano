@@ -160,11 +160,13 @@ cython_debug/
 #.idea/
 
 WESAD/
+
 preprocessing/pyvenv.cfg
 preprocessing/Scripts/
 preprocessing/Include
 preprocessing/Lib
 preprocessing/share
+
 DL/pyvenv.cfg
 DL/Scripts/
 DL/Include
@@ -173,13 +175,18 @@ DL/share
 DL/pretrained_models
 DL/Library
 DL/run_example.txt
-sessions/
-graphs/
+DL/sessions
+
 CML/Include
 CML/Scripts
 CML/Lib
 CML/share
 CML/pyvenv.cfg
+CML/feature_analysis.py
+CML/feature.csv
+CML/feature_NOT_STD.csv
+CML/results
+
 processed_data/USER_SEGMENT_IDS.csv
 processed_data/AROUSAL.csv
 processed_data/VALENCE.csv
