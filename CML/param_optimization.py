@@ -6,9 +6,9 @@ from sklearn.model_selection import GridSearchCV
 import pandas as pd
 from datetime import datetime
 
-from feature_extraction import feature_extraction, remove_neutrals
+from feature_extraction import remove_neutrals
+from optimization_options import Options
 
-label = 'valence'
 grids = {
     'xgb': {
         'max_depth': [3, 5, 10, 20, 30],
@@ -42,26 +42,32 @@ models = {
     'dt': DecisionTreeClassifier()
 } # Modelli utilizzati
 
-# Estrazione delle features (Commentare se già effettuata)
-'''feature_extraction()'''
+model_names = {
+    'xgb': 'XGBoost',
+    'knn': 'kNN',
+    'rf': 'random forest',
+    'dt': 'decision tree'
+}
 
-# Lettura dataframe delle features
-features_df = pd.read_csv('CML\\features.csv', header='infer')
+def main(config):
 
-# Rimozione etichette neutral dell'etichetta da predire
-features_df = remove_neutrals(features_df.copy(), label)
+    # Lettura dataframe delle features
+    features_df = pd.read_csv('CML\\features.csv', header='infer')
 
-# Classificazione
-X = features_df.drop(['segment_id', 'valence', 'arousal', 'user_id'], axis=1)
-y = features_df[label]
+    # Rimozione etichette neutral dell'etichetta da predire
+    features_df = remove_neutrals(features_df.copy(), config['label'])
 
-current_datetime = datetime.now()
-run_name = current_datetime.strftime("%m-%d_%H-%M")
-with open(f'CML\\results\\{label}_optimization_{run_name}.txt', 'w') as file:
-    for model in models.keys():
-        print(f'hyperparameters search for model {model}...')
-        grid_search = GridSearchCV(estimator=models[model], param_grid=grids[model], cv=5, scoring='accuracy', n_jobs=-1)
-        grid_search.fit(X, y)
-        best_params = grid_search.best_params_
-        print(f"Best hyperparameters values: {best_params}")
-        file.write(f"{model}: {best_params}\n")
+    # Classificazione
+    X = features_df.drop(['segment_id', 'valence', 'arousal', 'user_id'], axis=1)
+    y = features_df[config['label']]
+
+    print(f'Ricerca iperparametri per il modello: {model_names[config["model"]]} in corso...')
+    grid_search = GridSearchCV(estimator=models[config['model']], param_grid=grids[config['model']], cv=5, scoring='accuracy', n_jobs=-1)
+    grid_search.fit(X, y)
+    best_params = grid_search.best_params_
+    print(f"Migliori iperparametri: {best_params}")
+
+args = Options().parse()
+config = args.__dict__
+
+main(config)

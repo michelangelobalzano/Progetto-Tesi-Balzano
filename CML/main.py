@@ -3,8 +3,6 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
 import xgboost as xgb
-from tqdm import tqdm
-from datetime import datetime
 
 from training_methods import LOSO, LNSO, KF
 from feature_extraction import remove_neutrals
