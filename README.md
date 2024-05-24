@@ -68,14 +68,14 @@ Una volta eseguito il comando, verrà creato un file chiamato "features.csv" che
 
 ### Ottimizzazione degli iperparametri (opzionale)
 
-Eseguire il seguente comando per ottenere i migliori iperparametri per tutti i modelli di machine learning classico testati:
+Eseguire il seguente comando per ottenere i migliori iperparametri per un determinato modello e una determinata etichetta:
 
 ```bash
 python CML/param_optimization.py --label arousal --model xgb
 ```
 
 I parametri utilizzabili sono i seguenti:
-* label: (obbligatorio) etichetta del quale ottimizzare gli iperparametri. Valori possibili: [valence, arousal]. 
+* label: (opzionale) etichetta del quale ottimizzare gli iperparametri. Valori possibili: [valence, arousal]. Default: valence. 
 * model: (obbligatorio) sigla del modello da utilizzare. xgb=XGBoost, knn=kNN, rf=random forest, dt=decision tree. Valori possibili: [xgb, knn, rf, dt]. 
 
 ### Classificazione

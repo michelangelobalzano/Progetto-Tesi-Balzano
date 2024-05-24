@@ -4,10 +4,9 @@ from sklearn.tree import DecisionTreeClassifier
 import xgboost as xgb
 from sklearn.model_selection import GridSearchCV
 import pandas as pd
-from datetime import datetime
 
 from feature_extraction import remove_neutrals
-from optimization_options import Options
+from options import Options
 
 grids = {
     'xgb': {
