@@ -180,3 +180,12 @@ CML/Scripts
 CML/Lib
 CML/share
 CML/pyvenv.cfg
+processed_data/USER_SEGMENT_IDS.csv
+processed_data/AROUSAL.csv
+processed_data/VALENCE.csv
+processed_data/BVP.csv
+processed_data/BVP_NOT_STD.csv
+processed_data/EDA.csv
+processed_data/EDA_NOT_STD.csv
+processed_data/HR.csv
+processed_data/HR_NOT_STD.csv

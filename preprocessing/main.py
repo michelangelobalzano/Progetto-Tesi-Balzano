@@ -11,7 +11,8 @@ config = args.__dict__
 
 config['data_directory'] = 'WESAD\\' # Directory del dataset WESAD
 config['signals'] = ['BVP', 'EDA', 'HR'] # Segnali considerati
-config['signals_to_process'] = config['signals'].remove('BVP') # Segnali considerati
+config['signals_to_process'] = config['signals'].copy() # Segnali considerati
+config['signals_to_process'].remove('BVP')
 config['resampling_frequency'] = 4 # Frequenza di ricampionamento (Hz)
 
 main(config)

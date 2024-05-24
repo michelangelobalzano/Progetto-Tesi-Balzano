@@ -4,7 +4,7 @@ from collections import Counter
 from tqdm import tqdm
 import numpy as np
 
-from preprocessing_methods import time_calculation, resampling, get_users
+from preprocessing_methods import time_calculation, resampling
 
 task_numbers = {
     'Base': 1,
@@ -17,22 +17,24 @@ valori_task_inutili = [5, 6, 7]
 
 def extract_WESAD_labels (config, users):
 
+    bvp = {}
+    for user_id in users:
+        bvp[user_id] = pd.DataFrame()
+
     progress_bar = tqdm(total=len(users), desc="Estrazione etichette", leave=False)
     for user_id in users:
 
-        print(f'utente: {user_id}')
-
         # Lettura file BVP
-        bvp = pd.read_csv(f'{config["data_directory"]}{user_id}\\BVP.csv', header=None)
+        user_bvp = pd.read_csv(f'{config["data_directory"]}{user_id}\\BVP.csv', header=None)
 
         # Calcolo del vettore dei tempi delle singole misurazioni
-        df_time = time_calculation(bvp)
+        df_time = time_calculation(user_bvp)
         # Rimozione delle prime due righe
-        bvp = bvp.iloc[2:, :]
+        user_bvp = user_bvp.iloc[2:, :]
         # Aggiunta delle intestazioni alle colonne
-        bvp.columns = ['bvp']
+        user_bvp.columns = ['bvp']
         # Aggiunta della colonna dei tempi
-        bvp['time'] = pd.to_datetime(df_time, unit='s')
+        user_bvp['time'] = pd.to_datetime(df_time, unit='s')
 
         # Lettura file pkl
         with open(f'{config["data_directory"]}{user_id}\\{user_id}.pkl', 'rb') as f:
@@ -48,28 +50,28 @@ def extract_WESAD_labels (config, users):
         # Vengono scelte sottosequenze di 20 valori per determinare l'inizio e la fine
         lunghezza_sequenza = 20
         sotto_sequenza = pkl_data_list[-lunghezza_sequenza:]
-        for i in range((len(bvp) - 1) - lunghezza_sequenza + 1):
-            if bvp['bvp'][i:i + lunghezza_sequenza].tolist() == sotto_sequenza:
-                bvp = bvp[:i+lunghezza_sequenza]
+        for i in range((len(user_bvp) - 1) - lunghezza_sequenza + 1):
+            if user_bvp['bvp'][i:i + lunghezza_sequenza].tolist() == sotto_sequenza:
+                user_bvp = user_bvp[:i+lunghezza_sequenza]
                 break
         sotto_sequenza = pkl_data_list[:lunghezza_sequenza]
-        for i in range((len(bvp) - 1) - lunghezza_sequenza + 1):
-            if bvp['bvp'][i:i + lunghezza_sequenza].tolist() == sotto_sequenza:
-                bvp = bvp[i:]
+        for i in range((len(user_bvp) - 1) - lunghezza_sequenza + 1):
+            if user_bvp['bvp'][i:i + lunghezza_sequenza].tolist() == sotto_sequenza:
+                user_bvp = user_bvp[i:]
                 break
 
-        bvp = resampling(bvp, target_freq=config['resampling_frequency'])
-        bvp['bvp'] = bvp['bvp'].round(2)
+        user_bvp = resampling(user_bvp, target_freq=config['resampling_frequency'])
+        user_bvp['bvp'] = user_bvp['bvp'].round(2)
 
         # Associazione delle etichette con ricampionamento da 700 a resampling_frequency Hz
         rapporto = 700/config['resampling_frequency']
         
         # Ricalcolo lunghezza segnale bvp per farlo terminare al secondo preciso
-        len_bvp = int((len(bvp)- (len(bvp)%config['resampling_frequency'])))
-        bvp = bvp.iloc[:len_bvp]
+        len_bvp = int((len(user_bvp)- (len(user_bvp)%config['resampling_frequency'])))
+        user_bvp = user_bvp.iloc[:len_bvp]
 
         # Ricalcolo lunghezza tasks per farle terminare al secondi preciso di bvp
-        len_tasks = int(len(bvp) * rapporto)
+        len_tasks = int(len(user_bvp) * rapporto)
         tasks = tasks[:len_tasks]
         
         # Ricalcolo delle etichette da 700Hz a resampling_frequency Hz in base al valore più frequente per ogni intervallo
@@ -82,23 +84,23 @@ def extract_WESAD_labels (config, users):
             pos += rapporto
 
         # Esportazione del nuovo df
-        bvp['task'] = nuove_etichette
+        user_bvp['task'] = nuove_etichette
 
         # Sostituzione valori non utili con uno 0 (nessuna task)
-        bvp['task'] = bvp['task'].replace(valori_task_inutili, 0)
+        user_bvp['task'] = user_bvp['task'].replace(valori_task_inutili, 0)
 
         # Per ogni utente ci sono due task di meditazione contrassegnate con valore 4
         # Alle due task corrispondono etichette diverse. Occorre differenziarle+
         # Sostituzione valore seconda task di meditazione (4) con un 5
         stato = 0
         idx_inizio_sostituzione = None
-        for i, valore in enumerate(bvp['task']):
+        for i, valore in enumerate(user_bvp['task']):
             nuovo_stato = valore
             if nuovo_stato != stato and stato == 4:
                 idx_inizio_sostituzione = i + 2
                 break
             stato = nuovo_stato
-        bvp.loc[idx_inizio_sostituzione:, 'task'] = bvp.loc[idx_inizio_sostituzione:, 'task'].replace(4, 5)
+        user_bvp.loc[idx_inizio_sostituzione:, 'task'] = user_bvp.loc[idx_inizio_sostituzione:, 'task'].replace(4, 5)
 
         # Lettura etichette e task corrispondenti da file csv
         valence = []
@@ -135,22 +137,21 @@ def extract_WESAD_labels (config, users):
                 arousal_std.append('neutral')
             
         # Associazione delle etichette ai task corrispondenti
-        bvp_not_std = bvp
-        for i, valore in enumerate(bvp['task']):
+        for i, valore in enumerate(user_bvp['task']):
             if valore in tasks:
-                bvp.loc[i, 'valence'] = valence_std[tasks.index(valore)]
-                bvp.loc[i, 'arousal'] = arousal_std[tasks.index(valore)]
-                bvp_not_std.loc[i, 'valence'] = valence[tasks.index(valore)]
-                bvp_not_std.loc[i, 'arousal'] = arousal[tasks.index(valore)]
+                user_bvp.loc[i, 'valence'] = valence_std[tasks.index(valore)]
+                user_bvp.loc[i, 'arousal'] = arousal_std[tasks.index(valore)]
             else:
-                bvp.loc[i, 'valence'] = None
-                bvp_not_std.loc[i, 'valence'] = None
+                user_bvp.loc[i, 'valence'] = None
 
-        bvp = bvp.drop(['task'], axis=1)
-        bvp_not_std = bvp_not_std.drop(['task'], axis=1)
+        user_bvp = user_bvp.drop(['task'], axis=1)
 
-        bvp.to_csv(f'{config["data_directory"]}{user_id}\\BVP_LABELED.csv', index=False)
-        bvp_not_std.to_csv(f'{config["data_directory"]}{user_id}\\BVP_LABELED_NOT_STD.csv', index=False)
+        bvp[user_id] = user_bvp
+
+        #user_bvp.to_csv(f'{config["data_directory"]}{user_id}\\BVP_LABELED.csv', index=False)
+        #user_bvp_not_std.to_csv(f'{config["data_directory"]}{user_id}\\BVP_LABELED_NOT_STD.csv', index=False)
 
         progress_bar.update(1)
     progress_bar.close()
+
+    return bvp

@@ -35,15 +35,14 @@ pip install -r requirements.txt
 Eseguire il preprocessing:
 
 ```bash
-python main.py <lista di parametri>
+python main.py --segmentation_window_size 60 --segmentation_step_size 10 --neutral_range 0.2
 ```
 
 I parametri utilizzabili sono i seguenti:
 
-* sds
-* asd
-* asda
-* asd
+* segmentation_window_size: (opzionale) dimensione della finestra di segmentazione (secondi). Valori possibili: [30, 60, 120], valore consigliato: 60.
+* segmentation_step_size: (opzionale) dimensione del passo di segmentazione (secondi). Valori possibili: [5, 10, 15], valore consigliato: 10.
+* neutral_range: range dalla media delle etichette neutral. Valori possibili: [0.2, 0.35, 0.5], valore consigliato: (opzionale) 0.2. Non utilizzare il valore 0.5 se si vuole classificare con il modello transformer con split dei dati per soggetto in quanto si generano troppi segmenti neutral.
 
 ## Classificazione mediante modelli CML
 
