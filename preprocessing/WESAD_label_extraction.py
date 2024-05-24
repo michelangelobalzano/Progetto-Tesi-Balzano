@@ -20,6 +20,8 @@ def extract_WESAD_labels (config, users):
     progress_bar = tqdm(total=len(users), desc="Estrazione etichette", leave=False)
     for user_id in users:
 
+        print(f'utente: {user_id}')
+
         # Lettura file BVP
         bvp = pd.read_csv(f'{config["data_directory"]}{user_id}\\BVP.csv', header=None)
 

@@ -11,8 +11,6 @@ class Options(object):
                                  help='Dimensione della finestra di segmentazione (secondi).')
         self.parser.add_argument('--segmentation_step_size', choices={5, 10, 15}, default=10,
                                  help='Dimensione del passo di segmentazione (secondi).')
-        self.parser.add_argument('--resampling_frequency', choices={4, 8, 16}, default=4,
-                                 help='Frequenza di ricampionamento dei segnali (Hz).')
         self.parser.add_argument('--neutral_range', choices={0.2, 0.35, 0.5}, default=0.2,
                                  help='Range dalla media delle etichette neutral.')
         
