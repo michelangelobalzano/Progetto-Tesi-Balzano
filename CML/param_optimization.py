@@ -48,7 +48,7 @@ model_names = {
     'dt': 'decision tree'
 }
 
-def main(config):
+def param_optimization(config):
 
     # Lettura dataframe delle features
     features_df = pd.read_csv('CML\\features.csv', header='infer')
@@ -69,4 +69,4 @@ def main(config):
 args = Options().parse()
 config = args.__dict__
 
-main(config)
+param_optimization(config)

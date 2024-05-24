@@ -9,9 +9,9 @@ class Options(object):
         
         self.parser.add_argument('--label', choices={'valence', 'arousal'}, default='valence',
                                  help='Etichetta del quale ottimizzare gli iperparametri.')
-        self.parser.add_argument('--model', choices={'xgb', 'knn', 'rf', 'dt'}, required=True,
+        self.parser.add_argument('--model', choices={'xgb', 'knn', 'rf', 'dt'}, default='xgb',
                                  help='Sigla del modello da utilizzare. xgb=XGBoost, knn=kNN, rf=random forest, dt=decision tree.')
-        self.parser.add_argument('--split_type', choices={'LOSO', 'L2SO', 'L3SO', 'KF5', 'KF10'}, required=True,
+        self.parser.add_argument('--split_type', choices={'LOSO', 'L2SO', 'L3SO', 'KF5', 'KF10'}, default='LOSO',
                                  help='Sigla tipo di split dei dati. LOSO=Leave One Subject Out, L2SO, L3SO=Leave 2, 3 subjects out, KF5, KF10=K-Fold Cross Validation k=5, 10.')
         
         

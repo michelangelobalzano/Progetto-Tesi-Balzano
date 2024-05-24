@@ -8,7 +8,7 @@ from training_methods import LOSO, LNSO, KF
 from feature_extraction import remove_neutrals
 from options import Options
 
-def main(config):
+def classification(config):
 
     if config['model'] == 'xgb':
         model = xgb.XGBClassifier(max_depth=config['xgb_max_depth'], 
@@ -63,4 +63,4 @@ def main(config):
 args = Options().parse()
 config = args.__dict__
 
-main(config)
+classification(config)

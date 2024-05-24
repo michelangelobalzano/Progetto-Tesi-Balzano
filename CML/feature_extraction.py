@@ -1,9 +1,7 @@
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
-from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
-import matplotlib.pyplot as plt
 
 label_map = {'negative': 0, 'neutral': 1, 'positive': 2}
 
@@ -42,7 +40,7 @@ def extract_segment_features(segment, segment_id):
         
     return pd.DataFrame(features, index=[0])
     
-def main():
+def extract_features():
     
     users = pd.read_csv('processed_data\\USER_SEGMENT_IDS.csv', header='infer')
 
@@ -85,4 +83,4 @@ def main():
     result_df = pd.merge(result_df, users, on='segment_id')
     result_df.to_csv('CML\\features.csv', index=False)
 
-main()
+extract_features()
