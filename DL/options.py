@@ -7,16 +7,11 @@ class Options(object):
         self.parser = argparse.ArgumentParser(
             description='Run di addestramento.')
         
-        # Percorsi
-        self.parser.add_argument('--data_path', type=str, default='processed_data\\',
-                                 help='Percorso directory dei dati preprocessati.')
-        self.parser.add_argument('--info_path', type=str, default='DL\\sessions\\',
-                                 help='Percorso directory salvataggio info sessioni.')
         # Preparazione dati
         self.parser.add_argument('--val_ratio', type=int, default=15,
-                                 help='Percorso directory salvataggio info sessioni.')
+                                 help='Rapporto dello split set di validazione.')
         self.parser.add_argument('--test_ratio', type=int, default=15,
-                                 help='Percorso directory salvataggio modelli preaddestrati.')
+                                 help='Rapporto dello split set di test.')
         self.parser.add_argument('--split_type', choices={'LOSO', 'L2SO', 'L3SO', 'segment'}, default='segment',
                                  help='Tipo di split dei dati in train/val/test.')
         # Opzioni di addestramento
@@ -35,23 +30,23 @@ class Options(object):
         self.parser.add_argument('--threshold', type=float, default=0.001,
                                  help='Soglia di tolleranza non miglioramento.')
         self.parser.add_argument('--label', choices={'valence', 'arousal'}, default='valence',
-                                 help='Etichetta da predire (solo per classificazione).')
+                                 help='Etichetta da classificare.')
         self.parser.add_argument('--num_optimization_trials', type=int, default=20,
                                  help='Numero di tentativi di ottimizzazione iperaparametri.')
         self.parser.add_argument('--num_optimization_epochs', type=int, default=20,
                                  help='Numero di epoche per trial di ottimizzazione iperparametri.')
         # Parametri modello
-        self.parser.add_argument('--batch_size', type=int, default=256,
+        self.parser.add_argument('--batch_size', type=int, choices={16,32,64,128,256}, default=256,
                                  help='Numero segmenti di un batch.')
-        self.parser.add_argument('--d_model', type=int, default=64,
+        self.parser.add_argument('--d_model', type=int, choices={32,64,128,256}, default=64,
                                  help='Dimensione interna del modello.')
-        self.parser.add_argument('--dim_feedforward', type=int, default=256,
+        self.parser.add_argument('--dim_feedforward', type=int, choices={128,256,512,1024,2048}, default=256,
                                  help='Dimensione feedforward network.')
-        self.parser.add_argument('--dropout', type=float, default=0.25,
+        self.parser.add_argument('--dropout', type=float, choices={0.1,0.15,0.2,0.25,0.3,0.4,0.5}, default=0.25,
                                  help='Percentuale spegnimento neuroni.')
-        self.parser.add_argument('--num_heads', type=int, default=2,
+        self.parser.add_argument('--num_heads', type=int, choices={2,4,8}, default=2,
                                  help='Numero di teste modulo auto-attenzione.')
-        self.parser.add_argument('--num_layers', type=int, default=3,
+        self.parser.add_argument('--num_layers', type=int, choices={2,3,4,5,6}, default=3,
                                  help='Numero layers dell encoder.')
         self.parser.add_argument('--pe_type', choices={'fixed', 'learnable'}, default='learnable',
                                  help='Tipo di positional encoding.')

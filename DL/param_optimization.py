@@ -52,7 +52,7 @@ def objective(trial, config, device, run_name, data, labels):
         scheduler.step(val_loss)
 
     # Salvataggio risultati trial
-    with open(f'DL\\sessions\\{config['label']}_optimization_' + run_name + '.csv', mode='a', newline='') as file:
+    with open(f'DL\\sessions\\{config["label"]}_optimization_' + run_name + '.csv', mode='a', newline='') as file:
         writer = csv.writer(file)
         writer.writerow([trial.number+1, accuracy, batch_size, d_model, dim_feedforward, dropout, num_heads, num_layers, pe_type])
 
@@ -71,7 +71,7 @@ def main(config):
     # Creazione file salvataggio sessione
     current_datetime = datetime.now()
     run_name = current_datetime.strftime("%m-%d_%H-%M")
-    with open(f'DL\\sessions\\{config['label']}_optimization_' + run_name + '.csv', mode='w', newline='') as file:
+    with open(f'DL\\sessions\\{config["label"]}_optimization_' + run_name + '.csv', mode='w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(['trial num.', 'accuracy', 'batch_size', 'd_model', 'dim_feedforward', 'dropout', 'num_heads', 'num_layers', 'pe_type'])
     
@@ -86,7 +86,7 @@ def main(config):
                                         n_trials=config['num_optimization_trials'])
 
     # Scrittura migliori iperparametri su file salvataggio
-    with open(f'DL\\sessions\\{config['label']}_optimization_' + run_name + '.csv', mode='a', newline='') as file:
+    with open(f'DL\\sessions\\{config["label"]}_optimization_' + run_name + '.csv', mode='a', newline='') as file:
         writer = csv.writer(file)
         writer.writerow([])
         writer.writerow(['Best trial:'])
@@ -102,6 +102,8 @@ def main(config):
 
 args = Options().parse()
 config = args.__dict__
+config['data_path'] = 'processed_data\\'
+config['info_path'] = 'DL\\sessions\\'
 config['signals'] = ['BVP', 'EDA', 'HR']
 config['num_signals'] = 3
 config['segment_length'] = 240
